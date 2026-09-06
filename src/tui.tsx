@@ -1,5 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { createSignal, onCleanup, onMount } from "solid-js"
+import type { Accessor, Setter } from "solid-js"
 import { TextAttributes } from "@opentui/core"
 import type { TuiPlugin, TuiPluginModule, TuiThemeCurrent } from "@opencode-ai/plugin/tui"
 import { formatGiB, formatPercent, formatRate, formatTemperature } from "./format.js"
@@ -25,35 +26,50 @@ const initialMetrics: SystemMetrics = {
   uploadBytesPerSecond: null,
 }
 
-const [sharedMetrics, setSharedMetrics] = createSignal<SystemMetrics>(initialMetrics)
-let metricsTimer: ReturnType<typeof setInterval> | undefined
-let metricsConsumers = 0
-let refreshing = false
+type MetricsState = {
+  sharedMetrics: Accessor<SystemMetrics>
+  setSharedMetrics: Setter<SystemMetrics>
+  metricsTimer: ReturnType<typeof setInterval> | undefined
+  metricsConsumers: number
+  refreshing: boolean
+}
+
+const METRICS_STATE_KEY = Symbol.for("opencode-monitor.system-metrics")
+const globalMetrics = globalThis as typeof globalThis & Record<symbol, MetricsState | undefined>
+const metricsState: MetricsState = globalMetrics[METRICS_STATE_KEY] ?? (globalMetrics[METRICS_STATE_KEY] = {
+  ...(() => {
+    const [sharedMetrics, setSharedMetrics] = createSignal<SystemMetrics>(initialMetrics)
+    return { sharedMetrics, setSharedMetrics }
+  })(),
+  metricsTimer: undefined,
+  metricsConsumers: 0,
+  refreshing: false,
+})
 
 const refreshMetrics = async () => {
-  if (refreshing) return
-  refreshing = true
+  if (metricsState.refreshing) return
+  metricsState.refreshing = true
   try {
-    setSharedMetrics(await readMetrics())
+    metricsState.setSharedMetrics(await readMetrics())
   } finally {
-    refreshing = false
+    metricsState.refreshing = false
   }
 }
 
 function startMetricsPolling() {
-  metricsConsumers += 1
-  if (metricsConsumers !== 1) return
+  metricsState.metricsConsumers += 1
+  if (metricsState.metricsConsumers !== 1) return
 
   void refreshMetrics()
-  metricsTimer = setInterval(() => void refreshMetrics(), REFRESH_INTERVAL_MS)
+  metricsState.metricsTimer = setInterval(() => void refreshMetrics(), REFRESH_INTERVAL_MS)
 }
 
 function stopMetricsPolling() {
-  metricsConsumers = Math.max(0, metricsConsumers - 1)
-  if (metricsConsumers !== 0 || metricsTimer === undefined) return
+  metricsState.metricsConsumers = Math.max(0, metricsState.metricsConsumers - 1)
+  if (metricsState.metricsConsumers !== 0 || metricsState.metricsTimer === undefined) return
 
-  clearInterval(metricsTimer)
-  metricsTimer = undefined
+  clearInterval(metricsState.metricsTimer)
+  metricsState.metricsTimer = undefined
 }
 
 function systemMetricsTitle(): string {
@@ -84,32 +100,32 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.cpu}</text>
         <text fg={props.theme.text}> CPU    </text>
-        <text fg={props.theme.textMuted}>{formatPercent(sharedMetrics().cpuPercent)} · {icons.thermometer} {formatTemperature(sharedMetrics().cpuTemperatureCelsius)}</text>
+        <text fg={props.theme.textMuted}>{formatPercent(metricsState.sharedMetrics().cpuPercent)} · {icons.thermometer} {formatTemperature(metricsState.sharedMetrics().cpuTemperatureCelsius)}</text>
       </box>
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.ram}</text>
         <text fg={props.theme.text}> RAM    </text>
         <text fg={props.theme.textMuted}>
-          {formatGiB(sharedMetrics().memoryUsedBytes)} / {formatGiB(sharedMetrics().memoryTotalBytes)} ({formatPercent(sharedMetrics().memoryPercent)})
+          {formatGiB(metricsState.sharedMetrics().memoryUsedBytes)} / {formatGiB(metricsState.sharedMetrics().memoryTotalBytes)} ({formatPercent(metricsState.sharedMetrics().memoryPercent)})
         </text>
       </box>
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.gpu}</text>
         <text fg={props.theme.text}> GPU    </text>
-        <text fg={props.theme.textMuted}>{formatPercent(sharedMetrics().gpuPercent)} · {icons.thermometer} {formatTemperature(sharedMetrics().gpuTemperatureCelsius)}</text>
+        <text fg={props.theme.textMuted}>{formatPercent(metricsState.sharedMetrics().gpuPercent)} · {icons.thermometer} {formatTemperature(metricsState.sharedMetrics().gpuTemperatureCelsius)}</text>
       </box>
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.vram}</text>
         <text fg={props.theme.text}> GPU VRAM </text>
         <text fg={props.theme.textMuted}>
-          {formatGiB(sharedMetrics().gpuMemoryUsedBytes)} / {formatGiB(sharedMetrics().gpuMemoryTotalBytes)} ({formatPercent(sharedMetrics().gpuMemoryPercent)})
+          {formatGiB(metricsState.sharedMetrics().gpuMemoryUsedBytes)} / {formatGiB(metricsState.sharedMetrics().gpuMemoryTotalBytes)} ({formatPercent(metricsState.sharedMetrics().gpuMemoryPercent)})
         </text>
       </box>
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.network}</text>
         <text fg={props.theme.text}> NET </text>
         <text fg={props.theme.textMuted}>
-          ↓ {formatRate(sharedMetrics().downloadBytesPerSecond)} ↑ {formatRate(sharedMetrics().uploadBytesPerSecond)}
+          ↓ {formatRate(metricsState.sharedMetrics().downloadBytesPerSecond)} ↑ {formatRate(metricsState.sharedMetrics().uploadBytesPerSecond)}
         </text>
       </box>
     </box>
