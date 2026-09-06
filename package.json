@@ -23,7 +23,9 @@
     "build": "bun scripts/build.ts && tsc --emitDeclarationOnly --declaration --outDir dist",
     "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "install-font": "node dist/install-hack-font.js"
+    "install-font": "node dist/install-hack-font.js",
+    "verify-installation": "tsx scripts/plugin-installation.ts",
+    "install-plugin": "tsx scripts/install-plugin.ts"
   },
   "engines": {
     "node": ">=18"

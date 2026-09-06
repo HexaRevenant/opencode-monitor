@@ -3,10 +3,19 @@
 ## Install globally in OpenCode
 
 ```powershell
-opencode plugin -g opencode-system-metrics-tui
+opencode plugin -g opencode-system-metrics-tui@0.1.3 --force
 ```
 
-Restart OpenCode after installation. This installs the plugin globally for all projects.
+This is the primary installation path. The version must match `package.json`; `--force` asks OpenCode to refresh its package cache. Verify the actual installed artifact afterward:
+
+```powershell
+npm run install-plugin
+npm run verify-installation
+```
+
+`npm run install-plugin` runs the same global OpenCode installer command with the current `package.json` version. The explicit command above is provided for users installing without this checkout.
+
+Restart OpenCode after installation. This installs the plugin globally for all projects. The OpenCode cache directory name, including `@latest`, is only a package-specifier label and does not prove the package version. Verification reads the nested package's own `package.json` and checks `dist/tui.js`; it reports stale entries without deleting anything.
 
 OpenCode TUI plugin that adds live CPU, RAM, GPU, GPU VRAM, temperature, and network metrics to the `sidebar_content` slot.
 
@@ -80,7 +89,7 @@ npm publish --access public
 En otro equipo:
 
 ```bash
-opencode plugin opencode-system-metrics-tui
+opencode plugin opencode-system-metrics-tui@0.1.3
 ```
 
 El paquete exporta tanto la raíz (`opencode-system-metrics-tui`) como `./tui`; ambas rutas cargan el mismo bundle TUI.
@@ -90,12 +99,14 @@ El instalador de OpenCode configura el plugin TUI automáticamente. Reinicia Ope
 Publicar en npm e instalar en OpenCode son pasos distintos:
 
 - `npm publish --access public` publica el paquete en npm.
-- `opencode plugin opencode-system-metrics-tui` lo instala solo en el proyecto actual.
-- `opencode plugin -g opencode-system-metrics-tui` lo instala globalmente para todos los proyectos.
+- `opencode plugin opencode-system-metrics-tui@0.1.3` lo instala solo en el proyecto actual.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.3 --force` lo instala globalmente para todos los proyectos.
 
 ### Verificación
 
 ```bash
+npm run install-plugin
+npm run verify-installation
 npm test
 npm run typecheck
 npm run build
@@ -169,7 +180,7 @@ npm publish --access public
 On another machine:
 
 ```bash
-opencode plugin opencode-system-metrics-tui
+opencode plugin opencode-system-metrics-tui@0.1.3
 ```
 
 The package exports both the root (`opencode-system-metrics-tui`) and `./tui`; both paths load the same TUI bundle.
@@ -179,12 +190,14 @@ The OpenCode installer configures the TUI plugin automatically. Restart OpenCode
 Publishing to npm and installing in OpenCode are separate steps:
 
 - `npm publish --access public` publishes the package to npm.
-- `opencode plugin opencode-system-metrics-tui` installs it for the current project only.
-- `opencode plugin -g opencode-system-metrics-tui` installs it globally for all projects.
+- `opencode plugin opencode-system-metrics-tui@0.1.3` installs it for the current project only.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.3 --force` installs it globally for all projects.
 
 ### Verification
 
 ```bash
+npm run install-plugin
+npm run verify-installation
 npm test
 npm run typecheck
 npm run build
@@ -258,7 +271,7 @@ npm publish --access public
 Em outro computador:
 
 ```bash
-opencode plugin opencode-system-metrics-tui
+opencode plugin opencode-system-metrics-tui@0.1.3
 ```
 
 O pacote exporta tanto a raiz (`opencode-system-metrics-tui`) quanto `./tui`; os dois caminhos carregam o mesmo bundle TUI.
@@ -268,8 +281,8 @@ O instalador do OpenCode configura o plugin TUI automaticamente. Reinicie o Open
 Publicar no npm e instalar no OpenCode são etapas diferentes:
 
 - `npm publish --access public` publica o pacote no npm.
-- `opencode plugin opencode-system-metrics-tui` instala o plugin apenas no projeto atual.
-- `opencode plugin -g opencode-system-metrics-tui` instala o plugin globalmente para todos os projetos.
+- `opencode plugin opencode-system-metrics-tui@0.1.3` instala o plugin apenas no projeto atual.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.3 --force` instala o plugin globalmente para todos os projetos.
 
 ### Verificação
 

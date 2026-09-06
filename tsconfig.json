@@ -9,5 +9,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["src", "scripts/install-hack-font.ts", "test"]
+  "include": ["src", "scripts/install-hack-font.ts", "scripts/plugin-installation.ts", "scripts/install-plugin.ts", "test"]
 }
