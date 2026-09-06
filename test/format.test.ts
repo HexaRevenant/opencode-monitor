@@ -36,8 +36,8 @@ describe("Hack Nerd Font paths and fallback", () => {
   it("recognizes Hack Nerd Font files and keeps Unicode fallback icons", () => {
     assert.equal(isHackNerdFontFile("HackNerdFont-Regular.ttf"), true)
     assert.equal(isHackNerdFontFile("OtherFont.ttf"), false)
-    assert.equal(getMetricIcons(false).cpu, "[C]")
-    assert.equal(getMetricIcons(false).vram, "[V]")
+    assert.equal(getMetricIcons(false).cpu, "▣")
+    assert.equal(getMetricIcons(false).vram, "◈")
     assert.notEqual(getMetricIcons(true).cpu, getMetricIcons(false).cpu)
     assert.notEqual(getMetricIcons(true).vram, getMetricIcons(false).vram)
   })
