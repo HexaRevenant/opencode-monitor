@@ -18,6 +18,7 @@ The README is available in **Español**, **English**, and **Português**.
 - Actualización cada 2 segundos.
 - Colores compatibles con el tema activo de OpenCode.
 - Iconos Hack Nerd Font con fallback Unicode.
+- En Windows usa iconos Unicode visibles de forma predeterminada, porque OpenCode no puede detectar la fuente activa de la terminal.
 - Soporte para Linux, macOS y Windows cuando el sistema expone las métricas.
 
 ### Requisitos
@@ -101,6 +102,7 @@ npm run build
 - Refreshes every 2 seconds.
 - Uses the active OpenCode theme colors.
 - Hack Nerd Font icons with Unicode fallback.
+- On Windows, visible Unicode icons are used by default because OpenCode cannot detect the terminal's active font.
 - Supports Linux, macOS, and Windows when the operating system exposes the metrics.
 
 ### Requirements
@@ -184,6 +186,7 @@ npm run build
 - Atualização a cada 2 segundos.
 - Usa as cores do tema ativo do OpenCode.
 - Ícones Hack Nerd Font com fallback Unicode.
+- No Windows, ícones Unicode visíveis são usados por padrão porque o OpenCode não consegue detectar a fonte ativa do terminal.
 - Suporte para Linux, macOS e Windows quando o sistema disponibiliza as métricas.
 
 ### Requisitos
