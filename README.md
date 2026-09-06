@@ -1,5 +1,13 @@
 # OpenCode System Metrics TUI
 
+## Install globally in OpenCode
+
+```powershell
+opencode plugin -g opencode-system-metrics-tui
+```
+
+Restart OpenCode after installation. This installs the plugin globally for all projects.
+
 OpenCode TUI plugin that adds live CPU, RAM, GPU, GPU VRAM, temperature, and network metrics to the `sidebar_content` slot.
 
 The README is available in **Español**, **English**, and **Português**.
