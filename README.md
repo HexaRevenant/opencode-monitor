@@ -6,7 +6,7 @@
 opencode plugin -g opencode-system-metrics-tui@0.1.6 --force
 ```
 
-This is the primary installation path. The version must match `package.json`; `--force` asks OpenCode to refresh its package cache. Verify the actual installed artifact afterward:
+This is the primary installation path. The version must match `package.json`; `--force` asks OpenCode to refresh its package cache. The helper below skips OpenCode when the expected artifact is already current. Verify the actual installed artifact afterward:
 
 ```powershell
 npm run install-plugin

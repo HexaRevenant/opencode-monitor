@@ -1,6 +1,6 @@
 import { existsSync, readdirSync } from "node:fs"
 import { homedir } from "node:os"
-import { join as posixJoin, win32 } from "node:path"
+import { posix, win32 } from "node:path"
 
 export type SupportedPlatform = "linux" | "darwin" | "win32"
 
@@ -9,13 +9,13 @@ const MAX_FONT_SCAN_DEPTH = 2
 const MAX_FONT_SCAN_ENTRIES = 256
 
 export function getFontDirectories(platform: SupportedPlatform, home = homedir(), env: NodeJS.ProcessEnv = process.env): string[] {
-  if (platform === "darwin") return [posixJoin(home, "Library", "Fonts"), "/Library/Fonts", "/System/Library/Fonts"]
+  if (platform === "darwin") return [posix.join(home, "Library", "Fonts"), "/Library/Fonts", "/System/Library/Fonts"]
   if (platform === "win32") {
     const localAppData = env.LOCALAPPDATA ?? win32.join(home, "AppData", "Local")
     const windows = env.WINDIR ?? "C:\\Windows"
     return [win32.join(localAppData, "Microsoft", "Windows", "Fonts"), win32.join(windows, "Fonts")]
   }
-  return [posixJoin(home, ".local", "share", "fonts"), posixJoin(home, ".fonts"), "/usr/local/share/fonts", "/usr/share/fonts"]
+  return [posix.join(home, ".local", "share", "fonts"), posix.join(home, ".fonts"), "/usr/local/share/fonts", "/usr/share/fonts"]
 }
 
 export function isNerdFontFile(fileName: string): boolean {
@@ -32,7 +32,7 @@ export function hasNerdFont(platform: SupportedPlatform = process.platform as Su
     if (!existsSync(directory)) return false
     try {
       return readdirSync(directory, { withFileTypes: true }).slice(0, MAX_FONT_SCAN_ENTRIES).some((entry) => {
-        const path = platform === "win32" ? win32.join(directory, entry.name) : posixJoin(directory, entry.name)
+        const path = platform === "win32" ? win32.join(directory, entry.name) : posix.join(directory, entry.name)
         return entry.isFile() ? isNerdFontFile(entry.name) : entry.isDirectory() && containsFont(path, depth + 1)
       })
     } catch {

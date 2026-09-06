@@ -15,6 +15,7 @@ export type PluginVerification = {
   packagePath?: string
   actualVersion?: string
   staleEntries: string[]
+  warnings: string[]
   errors: string[]
 }
 
@@ -46,8 +47,11 @@ export async function verifyPluginInstallation(options: PluginVerificationOption
   const cacheDirectory = resolve(options.cacheDirectory ?? getDefaultOpenCodeCacheDirectory())
   const errors: string[] = []
   const staleEntries: string[] = []
+  const warnings: string[] = []
   let packagePath: string | undefined
   let actualVersion: string | undefined
+  let expectedArtifactFound = false
+  let expectedPackagePath: string | undefined
 
   let entries: string[]
   try {
@@ -55,7 +59,7 @@ export async function verifyPluginInstallation(options: PluginVerificationOption
       .filter((entry) => entry.isDirectory() && entry.name.startsWith(`${options.packageName}@`))
       .map((entry) => entry.name)
   } catch {
-    return { ok: false, staleEntries, errors: [`OpenCode package cache not found: ${cacheDirectory}`] }
+    return { ok: false, staleEntries, warnings, errors: [`OpenCode package cache not found: ${cacheDirectory}`] }
   }
 
   for (const entry of entries) {
@@ -65,31 +69,42 @@ export async function verifyPluginInstallation(options: PluginVerificationOption
       staleEntries.push(join(cacheDirectory, entry))
       continue
     }
-    if (manifest.version === options.expectedVersion && packagePath === undefined) {
-      packagePath = candidatePath
-      actualVersion = manifest.version
-    } else if (manifest.version !== options.expectedVersion) {
+    if (manifest.version === options.expectedVersion) {
+      expectedArtifactFound = true
+      expectedPackagePath ??= candidatePath
+      if (await exists(join(candidatePath, options.distPath ?? "dist", "tui.js")) && packagePath === undefined) {
+        packagePath = candidatePath
+        actualVersion = manifest.version
+      }
+    } else {
       staleEntries.push(join(cacheDirectory, entry))
     }
   }
 
-  if (packagePath === undefined) {
+  if (!expectedArtifactFound) {
     errors.push(`Installed ${options.packageName}@${options.expectedVersion} was not found in ${cacheDirectory}`)
+  } else if (packagePath === undefined) {
+    errors.push(`Required dist/tui.js is missing from an expected ${options.packageName}@${options.expectedVersion} artifact in ${cacheDirectory}`)
+    packagePath = expectedPackagePath
+    actualVersion = options.expectedVersion
   } else if (actualVersion !== options.expectedVersion) {
     errors.push(`Installed version is ${actualVersion ?? "unknown"}; expected ${options.expectedVersion}`)
   }
 
-  if (packagePath !== undefined && !(await exists(join(packagePath, options.distPath ?? "dist", "tui.js")))) {
-    errors.push(`Required dist/tui.js is missing from ${packagePath}`)
-  }
-  if (staleEntries.length > 0) errors.push(`Stale OpenCode cache entries detected: ${staleEntries.join(", ")}`)
+  if (staleEntries.length > 0) warnings.push(`Stale OpenCode cache entries detected: ${staleEntries.join(", ")}`)
 
-  return { ok: errors.length === 0, packagePath, actualVersion, staleEntries, errors }
+  return { ok: errors.length === 0, packagePath, actualVersion, staleEntries, warnings, errors }
+}
+
+export function shouldInstallPlugin(result: PluginVerification): boolean {
+  return !result.ok
 }
 
 export function formatVerificationResult(result: PluginVerification): string {
-  if (result.ok) return `Verified OpenCode plugin ${result.actualVersion} at ${result.packagePath}`
-  return result.errors.join("\n")
+  const lines = result.ok
+    ? [`Verified OpenCode plugin ${result.actualVersion} at ${result.packagePath}`]
+    : result.errors
+  return [...lines, ...result.warnings].join("\n")
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {

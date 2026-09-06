@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { it } from "node:test"
-import { verifyPluginInstallation } from "../scripts/plugin-installation.js"
+import { shouldInstallPlugin, verifyPluginInstallation } from "../scripts/plugin-installation.js"
 
 it("publishes the root and ./tui exports to the same TUI bundle", async () => {
   const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"))
@@ -20,30 +20,47 @@ async function createCachedPlugin(cacheDirectory: string, entry: string, version
 
 it("verifies the installed manifest version and required bundle", async () => {
   const cacheDirectory = await mkdtemp(join(tmpdir(), "opencode-monitor-cache-"))
-  await createCachedPlugin(cacheDirectory, "opencode-system-metrics-tui@latest", "0.1.3")
+  await createCachedPlugin(cacheDirectory, "opencode-system-metrics-tui@0.1.6", "0.1.6")
 
   const result = await verifyPluginInstallation({
     cacheDirectory,
     packageName: "opencode-system-metrics-tui",
-    expectedVersion: "0.1.3",
+    expectedVersion: "0.1.6",
   })
 
   assert.equal(result.ok, true)
-  assert.equal(result.actualVersion, "0.1.3")
+  assert.equal(result.actualVersion, "0.1.6")
+  assert.equal(shouldInstallPlugin(result), false)
 })
 
-it("reports stale cache entries without deleting them", async () => {
+it("reports stale cache entries without requiring reinstall when expected artifact is valid", async () => {
   const cacheDirectory = await mkdtemp(join(tmpdir(), "opencode-monitor-cache-"))
   await createCachedPlugin(cacheDirectory, "opencode-system-metrics-tui@latest", "0.1.0")
-  await createCachedPlugin(cacheDirectory, "opencode-system-metrics-tui@0.1.3", "0.1.3", false)
+  await createCachedPlugin(cacheDirectory, "opencode-system-metrics-tui@0.1.6", "0.1.6")
 
   const result = await verifyPluginInstallation({
     cacheDirectory,
     packageName: "opencode-system-metrics-tui",
-    expectedVersion: "0.1.3",
+    expectedVersion: "0.1.6",
+  })
+
+  assert.equal(result.ok, true)
+  assert.equal(result.staleEntries.length, 1)
+  assert.match(result.warnings.join("\n"), /Stale OpenCode cache entries/)
+  assert.equal(shouldInstallPlugin(result), false)
+})
+
+it("requires reinstall when the expected bundle is missing", async () => {
+  const cacheDirectory = await mkdtemp(join(tmpdir(), "opencode-monitor-cache-"))
+  await createCachedPlugin(cacheDirectory, "opencode-system-metrics-tui@0.1.6", "0.1.6", false)
+
+  const result = await verifyPluginInstallation({
+    cacheDirectory,
+    packageName: "opencode-system-metrics-tui",
+    expectedVersion: "0.1.6",
   })
 
   assert.equal(result.ok, false)
-  assert.equal(result.staleEntries.length, 1)
+  assert.equal(shouldInstallPlugin(result), true)
   assert.match(result.errors.join("\n"), /dist\/tui\.js/)
 })
