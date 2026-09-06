@@ -3,7 +3,10 @@ import { promisify } from "node:util"
 import si from "systeminformation"
 
 const execFileAsync = promisify(execFile)
-const WINDOWS_NETWORK_TIMEOUT_MS = 1_500
+export const DEFAULT_METRIC_TIMEOUT_MS = 1_500
+export const WINDOWS_MEMORY_TIMEOUT_MS = 5_000
+export const WINDOWS_NETWORK_PROCESS_TIMEOUT_MS = 4_000
+export const WINDOWS_NETWORK_OUTER_TIMEOUT_MS = 4_500
 
 export interface SystemMetrics {
   cpuPercent: number | null
@@ -72,7 +75,7 @@ async function readWindowsNetworkSample(): Promise<NetworkSample[]> {
       "-Command",
       "Get-NetAdapterStatistics | Select-Object Name,ReceivedBytes,SentBytes | ConvertTo-Json -Compress",
     ],
-    { windowsHide: true, timeout: WINDOWS_NETWORK_TIMEOUT_MS, maxBuffer: 1024 * 1024 },
+    { windowsHide: true, timeout: WINDOWS_NETWORK_PROCESS_TIMEOUT_MS, maxBuffer: 1024 * 1024 },
   )
   return parseWindowsNetworkOutput(stdout)
 }
@@ -292,8 +295,8 @@ async function readWindowsCpuTemperature(): Promise<{ main: number } | undefined
 
 export async function readMetrics(): Promise<SystemMetrics> {
   const [load, memory] = await Promise.allSettled([
-    withTimeout(si.currentLoad(), 1_500),
-    withTimeout(si.mem(), 1_500),
+    withTimeout(si.currentLoad(), DEFAULT_METRIC_TIMEOUT_MS),
+    withTimeout(si.mem(), isWindows ? WINDOWS_MEMORY_TIMEOUT_MS : DEFAULT_METRIC_TIMEOUT_MS),
   ])
 
   const [temperature, graphics, network] = await Promise.allSettled([
@@ -305,7 +308,7 @@ export async function readMetrics(): Promise<SystemMetrics> {
       isWindows ? NETWORK_CACHE_MS : 2_000,
       Date.now(),
       OPTIONAL_SOURCE_BACKOFF_MS,
-      1_500,
+      isWindows ? WINDOWS_NETWORK_OUTER_TIMEOUT_MS : DEFAULT_METRIC_TIMEOUT_MS,
     ),
   ])
 

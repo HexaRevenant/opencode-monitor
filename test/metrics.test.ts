@@ -1,8 +1,27 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { parseMonitorTemperature, parseWindowsNetworkOutput, readCachedMetric, selectGpuMetrics, withTimeout, type CachedMetric } from "../src/metrics.js"
+import {
+  DEFAULT_METRIC_TIMEOUT_MS,
+  parseMonitorTemperature,
+  parseWindowsNetworkOutput,
+  readCachedMetric,
+  selectGpuMetrics,
+  WINDOWS_MEMORY_TIMEOUT_MS,
+  WINDOWS_NETWORK_OUTER_TIMEOUT_MS,
+  WINDOWS_NETWORK_PROCESS_TIMEOUT_MS,
+  withTimeout,
+  type CachedMetric,
+} from "../src/metrics.js"
 
 describe("Windows metric parsing", () => {
+  it("keeps Windows operation timeouts bounded and ordered", () => {
+    assert.equal(DEFAULT_METRIC_TIMEOUT_MS, 1_500)
+    assert.equal(WINDOWS_MEMORY_TIMEOUT_MS, 5_000)
+    assert.equal(WINDOWS_NETWORK_PROCESS_TIMEOUT_MS, 4_000)
+    assert.equal(WINDOWS_NETWORK_OUTER_TIMEOUT_MS, 4_500)
+    assert.ok(WINDOWS_NETWORK_OUTER_TIMEOUT_MS >= WINDOWS_NETWORK_PROCESS_TIMEOUT_MS)
+  })
+
   it("parses PowerShell JSON in both object and array forms", () => {
     assert.deepEqual(parseWindowsNetworkOutput('{"Name":"Ethernet","ReceivedBytes":100,"SentBytes":50}'), [{ iface: "Ethernet", rx_bytes: 100, tx_bytes: 50 }])
     assert.equal(parseWindowsNetworkOutput('[{"Name":"Wi-Fi","ReceivedBytes":200,"SentBytes":75}]')[0].rx_bytes, 200)
