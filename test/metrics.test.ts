@@ -2,9 +2,14 @@ import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import {
   DEFAULT_METRIC_TIMEOUT_MS,
+  detectMacHardwareArchitecture,
+  gpuMemoryLabel,
+  parseMacGpuUtilization,
+  parseMacStatsTemperature,
   parseMonitorTemperature,
   parseWindowsNetworkOutput,
   readCachedMetric,
+  readMacMetrics,
   selectGpuMetrics,
   WINDOWS_MEMORY_TIMEOUT_MS,
   WINDOWS_NETWORK_OUTER_TIMEOUT_MS,
@@ -30,6 +35,59 @@ describe("Windows metric parsing", () => {
   })
 
   it("parses LibreHardwareMonitor temperatures", () => assert.equal(parseMonitorTemperature("51,5 °C"), 51.5))
+})
+
+describe("macOS metric parsing", () => {
+  it("detects native Apple Silicon from sysctl", async () => {
+    assert.equal(await detectMacHardwareArchitecture(async () => "1", "arm64"), "arm64")
+  })
+
+  it("detects Apple Silicon when an M4 process runs as x64 under Rosetta", async () => {
+    assert.equal(await detectMacHardwareArchitecture(async () => "1", "x64"), "arm64")
+  })
+
+  it("detects Intel x86_64 from sysctl", async () => {
+    assert.equal(await detectMacHardwareArchitecture(async () => "0", "x64"), "x86_64")
+  })
+
+  it("uses a conservative fallback when sysctl is missing or fails", async () => {
+    assert.equal(await detectMacHardwareArchitecture(async () => { throw new Error("not found") }, "arm64"), "arm64")
+    assert.equal(await detectMacHardwareArchitecture(async () => { throw new Error("not found") }, "x64"), "x86_64")
+  })
+
+  it("never labels unified memory as GPU VRAM", () => {
+    assert.equal(gpuMemoryLabel("arm64", "darwin"), "Unified Memory")
+    assert.equal(gpuMemoryLabel("x86_64", "darwin"), "GPU VRAM")
+    assert.equal(gpuMemoryLabel(undefined, "darwin"), "Memory")
+  })
+
+  it("parses IOAccelerator utilization and rejects malformed values", () => {
+    assert.equal(parseMacGpuUtilization('"Device Utilization %"=42.5'), 42.5)
+    assert.equal(parseMacGpuUtilization('"Device Utilization %"=101'), undefined)
+    assert.equal(parseMacGpuUtilization(""), undefined)
+  })
+
+  it("selects the hottest CPU or GPU Stats sensor", () => {
+    const output = "[Tp01] 44.5 °C\n[Tp99] 61.0 °C\n[Tg0] 55.0 °C\n[Tg1] malformed"
+    assert.equal(parseMacStatsTemperature(output, "Tp"), 61)
+    assert.equal(parseMacStatsTemperature(output, "Tg"), 55)
+    assert.equal(parseMacStatsTemperature("unexpected output", "Tp"), undefined)
+  })
+
+  it("keeps subprocess execution injectable and tolerates missing helpers", async () => {
+    const calls: string[] = []
+    const metrics = await readMacMetrics(async (command) => {
+      calls.push(command)
+      if (command === "ioreg") return '"Device Utilization %"=73'
+      return "[Tp01] 48 °C\n[Tg01] 58 °C"
+    })
+    assert.deepEqual(metrics, { gpuPercent: 73, cpuTemperatureCelsius: 48, gpuTemperatureCelsius: 58 })
+    assert.deepEqual(calls.sort(), ["/Applications/Stats.app/Contents/Resources/smc", "ioreg"])
+
+    assert.deepEqual(await readMacMetrics(async () => { throw new Error("helper unavailable") }), {
+      gpuPercent: null, cpuTemperatureCelsius: null, gpuTemperatureCelsius: null,
+    })
+  })
 })
 
 describe("metric cache and GPU fallback", () => {

@@ -7,6 +7,8 @@ export const DEFAULT_METRIC_TIMEOUT_MS = 1_500
 export const WINDOWS_MEMORY_TIMEOUT_MS = 5_000
 export const WINDOWS_NETWORK_PROCESS_TIMEOUT_MS = 4_000
 export const WINDOWS_NETWORK_OUTER_TIMEOUT_MS = 4_500
+const MAC_METRIC_TIMEOUT_MS = 1_500
+const MAC_STATS_HELPER = "/Applications/Stats.app/Contents/Resources/smc"
 
 export interface SystemMetrics {
   cpuPercent: number | null
@@ -19,6 +21,7 @@ export interface SystemMetrics {
   gpuMemoryUsedBytes: number | null
   gpuMemoryTotalBytes: number | null
   gpuMemoryPercent: number | null
+  gpuMemoryIsUnified: boolean | null
   downloadBytesPerSecond: number | null
   uploadBytesPerSecond: number | null
 }
@@ -26,10 +29,82 @@ export interface SystemMetrics {
 export type NetworkSample = { rx_bytes?: number; tx_bytes?: number; rx_sec?: number; tx_sec?: number; iface?: string }
 type MonitorNode = { Text?: string; Type?: string; Value?: string; Children?: MonitorNode[] }
 
+export type CommandRunner = (command: string, args: string[], timeoutMs: number) => Promise<string>
+
+const runCommand: CommandRunner = async (command, args, timeoutMs) => {
+  const { stdout } = await execFileAsync(command, args, { timeout: timeoutMs, maxBuffer: 1024 * 1024 })
+  return stdout
+}
+
+export type MacHardwareArchitecture = "arm64" | "x86_64"
+
+export async function detectMacHardwareArchitecture(
+  runner: CommandRunner = runCommand,
+  processArchitecture: string = process.arch,
+): Promise<MacHardwareArchitecture> {
+  try {
+    const output = (await runner("sysctl", ["-in", "hw.optional.arm64"], MAC_METRIC_TIMEOUT_MS)).trim()
+    if (output === "1") return "arm64"
+    if (output === "0") return "x86_64"
+  } catch {
+    // Fall back below when sysctl is unavailable or times out.
+  }
+
+  // A native arm64 process proves Apple Silicon, but an x64 process may be
+  // either Intel or Rosetta. Treat the ambiguous case conservatively.
+  return processArchitecture === "arm64" ? "arm64" : "x86_64"
+}
+
+export function gpuMemoryLabel(
+  architecture: MacHardwareArchitecture | undefined,
+  platform: string = process.platform,
+): string {
+  if (platform !== "darwin") return "GPU VRAM"
+  if (architecture === "arm64") return "Unified Memory"
+  if (architecture === "x86_64") return "GPU VRAM"
+  return "Memory"
+}
+
 export function parseMonitorTemperature(value: string | undefined): number | undefined {
   if (value === undefined) return undefined
   const parsed = Number(value.replace(",", ".").replace(/[^\d.-]/g, ""))
   return Number.isFinite(parsed) ? parsed : undefined
+}
+
+export function parseMacGpuUtilization(stdout: string): number | undefined {
+  const match = stdout.match(/"Device Utilization %"\s*=\s*([\d]+(?:\.\d+)?)/)
+  if (match === null) return undefined
+  const value = Number(match[1])
+  return Number.isFinite(value) && value >= 0 && value <= 100 ? value : undefined
+}
+
+export function parseMacStatsTemperature(stdout: string, sensorPrefix: "Tp" | "Tg"): number | undefined {
+  let maximum: number | undefined
+  for (const line of stdout.split(/\r?\n/)) {
+    const fields = line.trim().split(/\s+/)
+    if (fields.length < 2 || !new RegExp(`^\\[${sensorPrefix}`).test(fields[0])) continue
+    const value = Number(fields[1].replace(",", ".").replace(/[°cC]/g, ""))
+    if (Number.isFinite(value) && value > 0 && (maximum === undefined || value > maximum)) maximum = value
+  }
+  return maximum
+}
+
+export type MacMetrics = {
+  gpuPercent: number | null
+  cpuTemperatureCelsius: number | null
+  gpuTemperatureCelsius: number | null
+}
+
+export async function readMacMetrics(runner: CommandRunner = runCommand): Promise<MacMetrics> {
+  const [gpuOutput, temperatureOutput] = await Promise.all([
+    runner("ioreg", ["-r", "-d", "1", "-c", "IOAccelerator"], MAC_METRIC_TIMEOUT_MS).catch(() => ""),
+    runner(MAC_STATS_HELPER, ["list", "-t"], MAC_METRIC_TIMEOUT_MS).catch(() => ""),
+  ])
+  return {
+    gpuPercent: parseMacGpuUtilization(gpuOutput) ?? null,
+    cpuTemperatureCelsius: parseMacStatsTemperature(temperatureOutput, "Tp") ?? null,
+    gpuTemperatureCelsius: parseMacStatsTemperature(temperatureOutput, "Tg") ?? null,
+  }
 }
 
 async function readLibreHardwareMonitorTemperature(): Promise<number | undefined> {
@@ -93,6 +168,7 @@ const unavailable: SystemMetrics = {
   gpuMemoryUsedBytes: null,
   gpuMemoryTotalBytes: null,
   gpuMemoryPercent: null,
+  gpuMemoryIsUnified: null,
   downloadBytesPerSecond: null,
   uploadBytesPerSecond: null,
 }
@@ -127,7 +203,15 @@ const SLOW_METRIC_CACHE_MS = 10_000
 const TEMPERATURE_CACHE_MS = 10_000
 const OPTIONAL_SOURCE_BACKOFF_MS = 30_000
 const isWindows = process.platform === "win32"
+const isMac = process.platform === "darwin"
 const NETWORK_CACHE_MS = 2_000
+let macHardwareArchitecture: Promise<MacHardwareArchitecture> | undefined
+
+function readMacHardwareArchitecture(): Promise<MacHardwareArchitecture> {
+  if (!isMac) return Promise.resolve("x86_64")
+  macHardwareArchitecture ??= detectMacHardwareArchitecture()
+  return macHardwareArchitecture
+}
 
 export type CachedMetric<T> = {
   value: T | undefined
@@ -239,6 +323,12 @@ const cachedGraphics: CachedMetric<Awaited<ReturnType<typeof si.graphics>>> = {
   inFlight: undefined,
 }
 
+const cachedMacMetrics: CachedMetric<MacMetrics> = {
+  value: undefined,
+  lastAttemptAt: 0,
+  inFlight: undefined,
+}
+
 const cachedNetwork: CachedMetric<NetworkSample[]> = {
   value: undefined,
   lastAttemptAt: 0,
@@ -294,12 +384,13 @@ async function readWindowsCpuTemperature(): Promise<{ main: number } | undefined
 }
 
 export async function readMetrics(): Promise<SystemMetrics> {
-  const [load, memory] = await Promise.allSettled([
+  const [load, memory, hardwareArchitecture] = await Promise.allSettled([
     withTimeout(si.currentLoad(), DEFAULT_METRIC_TIMEOUT_MS),
     withTimeout(si.mem(), isWindows ? WINDOWS_MEMORY_TIMEOUT_MS : DEFAULT_METRIC_TIMEOUT_MS),
+    readMacHardwareArchitecture(),
   ])
 
-  const [temperature, graphics, network] = await Promise.allSettled([
+  const [temperature, graphics, network, mac] = await Promise.allSettled([
     readCachedMetric(cachedCpuTemperature, isWindows ? readWindowsCpuTemperature : () => si.cpuTemperature(), TEMPERATURE_CACHE_MS, Date.now(), TEMPERATURE_CACHE_MS, 2_500),
     readCachedMetric(cachedGraphics, () => si.graphics(), SLOW_METRIC_CACHE_MS, Date.now(), SLOW_METRIC_CACHE_MS, 2_500),
     readCachedMetric(
@@ -310,6 +401,9 @@ export async function readMetrics(): Promise<SystemMetrics> {
       OPTIONAL_SOURCE_BACKOFF_MS,
       isWindows ? WINDOWS_NETWORK_OUTER_TIMEOUT_MS : DEFAULT_METRIC_TIMEOUT_MS,
     ),
+    isMac
+      ? readCachedMetric(cachedMacMetrics, () => readMacMetrics(), SLOW_METRIC_CACHE_MS, Date.now(), OPTIONAL_SOURCE_BACKOFF_MS, MAC_METRIC_TIMEOUT_MS)
+      : Promise.resolve(undefined),
   ])
 
   const cpuPercent = load.status === "fulfilled" ? finite(load.value.currentLoad) : null
@@ -327,6 +421,16 @@ export async function readMetrics(): Promise<SystemMetrics> {
       : null
 
   const gpu = selectGpuMetrics(graphics.status === "fulfilled" ? graphics.value : undefined)
+  const macMetrics = mac.status === "fulfilled" ? mac.value : undefined
+  const architecture = hardwareArchitecture.status === "fulfilled" ? hardwareArchitecture.value : undefined
+  const isAppleSilicon = isMac && architecture === "arm64"
+  if (isAppleSilicon) {
+    // Apple Silicon has unified memory; systeminformation's graphics memory
+    // fields are not a reliable live VRAM source and must not be relabeled.
+    gpu.gpuMemoryUsedBytes = null
+    gpu.gpuMemoryTotalBytes = null
+    gpu.gpuMemoryPercent = null
+  }
 
   let downloadBytesPerSecond: number | null = null
   let uploadBytesPerSecond: number | null = null
@@ -357,15 +461,16 @@ export async function readMetrics(): Promise<SystemMetrics> {
     memoryUsedBytes,
     memoryTotalBytes,
     memoryPercent,
-    gpuPercent: gpu.gpuPercent,
+    gpuPercent: macMetrics?.gpuPercent ?? gpu.gpuPercent,
     cpuTemperatureCelsius:
-      temperature.status === "fulfilled" && temperature.value !== undefined
+      macMetrics?.cpuTemperatureCelsius ?? (temperature.status === "fulfilled" && temperature.value !== undefined
         ? finite(temperature.value.main) ?? ("max" in temperature.value ? finite(temperature.value.max) : null)
-        : null,
-    gpuTemperatureCelsius: gpu.gpuTemperatureCelsius,
+        : null),
+    gpuTemperatureCelsius: macMetrics?.gpuTemperatureCelsius ?? gpu.gpuTemperatureCelsius,
     gpuMemoryUsedBytes: gpu.gpuMemoryUsedBytes,
     gpuMemoryTotalBytes: gpu.gpuMemoryTotalBytes,
     gpuMemoryPercent: gpu.gpuMemoryPercent,
+    gpuMemoryIsUnified: isAppleSilicon ? true : isMac && architecture === "x86_64" ? false : null,
     downloadBytesPerSecond,
     uploadBytesPerSecond,
   }

@@ -4,7 +4,7 @@ import type { Accessor, Setter } from "solid-js"
 import { TextAttributes } from "@opentui/core"
 import type { TuiPlugin, TuiPluginModule, TuiThemeCurrent } from "@opencode-ai/plugin/tui"
 import { formatGiB, formatPercent, formatRate, formatTemperature } from "./format.js"
-import { readMetrics, type SystemMetrics } from "./metrics.js"
+import { gpuMemoryLabel, readMetrics, type SystemMetrics } from "./metrics.js"
 import { getMetricIcons, hasNerdFont, shouldUseNerdFont } from "./font.js"
 
 const REFRESH_INTERVAL_MS = 2000
@@ -23,6 +23,7 @@ const initialMetrics: SystemMetrics = {
   gpuMemoryUsedBytes: null,
   gpuMemoryTotalBytes: null,
   gpuMemoryPercent: null,
+  gpuMemoryIsUnified: null,
   downloadBytesPerSecond: null,
   uploadBytesPerSecond: null,
 }
@@ -117,7 +118,7 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
       </box>
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.vram}</text>
-        <text fg={props.theme.text}> GPU VRAM </text>
+        <text fg={props.theme.text}> {gpuMemoryLabel(metricsState.sharedMetrics().gpuMemoryIsUnified === true ? "arm64" : metricsState.sharedMetrics().gpuMemoryIsUnified === false ? "x86_64" : undefined)} </text>
         <text fg={props.theme.textMuted}>
           {formatGiB(metricsState.sharedMetrics().gpuMemoryUsedBytes)} / {formatGiB(metricsState.sharedMetrics().gpuMemoryTotalBytes)} ({formatPercent(metricsState.sharedMetrics().gpuMemoryPercent)})
         </text>

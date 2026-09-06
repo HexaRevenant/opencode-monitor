@@ -31,12 +31,14 @@ The README is available in **Español**, **English**, and **Português**.
 - RAM: memoria usada, total y porcentaje.
 - GPU: utilización y temperatura.
 - GPU VRAM: memoria usada, total y porcentaje.
+- En Apple Silicon, la fila se muestra como **Unified Memory**; no se presenta la memoria total del sistema como VRAM usada porque no existe una fuente fiable de uso dinámico.
 - Red: velocidad de descarga y subida en tiempo real.
 - CPU, RAM y red se consultan con una cadencia general de 2 segundos; GPU, VRAM y temperaturas usan una caché expirable de 10 segundos para reducir el coste sin congelar los sensores.
 - Colores compatibles con el tema activo de OpenCode.
 - Iconos Unicode por defecto en Windows (la detección de fuentes instaladas no cambia la selección); Linux/macOS usan Nerd Font solo si está instalada y mantienen fallback Unicode.
 - En Windows usa iconos Unicode visibles de forma predeterminada, porque OpenCode no puede detectar la fuente activa de la terminal.
 - Soporte para Linux, macOS y Windows cuando el sistema expone las métricas.
+- En macOS, la utilización de GPU usa `ioreg` y las temperaturas usan el helper de Stats si está instalado; si cualquiera de ellos falta, esa métrica queda como no disponible sin interrumpir el plugin. En Intel se conserva el fallback de GPU discreta de `systeminformation`.
 - En Windows, la temperatura de CPU requiere LibreHardwareMonitor ejecutándose como administrador con **Remote Web Server** activo en `http://127.0.0.1:8085`.
 - En Windows, la velocidad de red usa PowerShell y `Get-NetAdapterStatistics`; no agrega una dependencia npm.
 - Las lecturas opcionales de Windows se hacen bajo demanda, con timeout y caché; no hay timers globales de PowerShell.
@@ -124,12 +126,14 @@ npm run build
 - RAM: used memory, total memory, and percentage.
 - GPU: utilization and temperature.
 - GPU VRAM: used memory, total memory, and percentage.
+- On Apple Silicon, the row is labeled **Unified Memory**; total system memory is never presented as live VRAM usage because no reliable dynamic source is available.
 - Network: live download and upload speeds.
 - CPU, RAM, and network use the 2-second general cadence; GPU, VRAM, and temperatures use an expiring 10-second cache to reduce cost without freezing sensors.
 - Uses the active OpenCode theme colors.
 - Windows uses Unicode icons by default (installed-font detection does not change selection); Linux/macOS use Nerd Font only when installed and retain Unicode fallback.
 - On Windows, visible Unicode icons are used by default because OpenCode cannot detect the terminal's active font.
 - Supports Linux, macOS, and Windows when the operating system exposes the metrics.
+- On macOS, GPU utilization uses `ioreg` and temperatures use the Stats helper when installed; missing helpers leave only that metric unavailable without interrupting the plugin. Intel retains the discrete-GPU `systeminformation` fallback.
 - On Windows, CPU temperature requires LibreHardwareMonitor running as administrator with **Remote Web Server** enabled at `http://127.0.0.1:8085`.
 - On Windows, network speed uses PowerShell and `Get-NetAdapterStatistics`; it adds no npm dependency.
 - Optional Windows reads are on demand, timeout-bounded, and cached; no global PowerShell timers are used.
