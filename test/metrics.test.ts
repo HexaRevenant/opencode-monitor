@@ -6,6 +6,8 @@ describe("Windows metric parsing", () => {
   it("parses PowerShell JSON in both object and array forms", () => {
     assert.deepEqual(parseWindowsNetworkOutput('{"Name":"Ethernet","ReceivedBytes":100,"SentBytes":50}'), [{ iface: "Ethernet", rx_bytes: 100, tx_bytes: 50 }])
     assert.equal(parseWindowsNetworkOutput('[{"Name":"Wi-Fi","ReceivedBytes":200,"SentBytes":75}]')[0].rx_bytes, 200)
+    assert.deepEqual(parseWindowsNetworkOutput("not-json"), [])
+    assert.deepEqual(parseWindowsNetworkOutput("null"), [])
   })
 
   it("parses LibreHardwareMonitor temperatures", () => assert.equal(parseMonitorTemperature("51,5 °C"), 51.5))
@@ -34,6 +36,18 @@ describe("metric cache and GPU fallback", () => {
     assert.equal(await readCachedMetric(state, async () => { throw new Error("timeout") }, 0, 1), 7)
   })
 
+  it("abandons a timed-out cache attempt and protects newer values", async () => {
+    const state: CachedMetric<number> = { value: 7, lastAttemptAt: 0, inFlight: undefined }
+    let resolveSlow: ((value: number) => void) | undefined
+    const slow = new Promise<number>((resolve) => { resolveSlow = resolve })
+    assert.equal(await readCachedMetric(state, () => slow, 0, 1, 0, 5), 7)
+
+    assert.equal(await readCachedMetric(state, async () => 9, 0, 2, 0, 50), 9)
+    resolveSlow!(100)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    assert.equal(state.value, 9)
+  })
+
   it("deduplicates a failed read and backs off before retrying", async () => {
     const state: CachedMetric<number> = { value: undefined, lastAttemptAt: 0, inFlight: undefined }
     let reads = 0
@@ -55,5 +69,12 @@ describe("metric cache and GPU fallback", () => {
 
   it("rejects a slow sensor without waiting for it", async () => {
     await assert.rejects(withTimeout(new Promise<number>((resolve) => setTimeout(() => resolve(1), 50)), 5), /metric timeout/)
+  })
+
+  it("returns safe empty GPU data for an unexpected structure", () => {
+    assert.deepEqual(selectGpuMetrics({ controllers: undefined as never }), {
+      gpuPercent: null, gpuTemperatureCelsius: null, gpuMemoryUsedBytes: null,
+      gpuMemoryTotalBytes: null, gpuMemoryPercent: null,
+    })
   })
 })

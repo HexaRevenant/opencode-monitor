@@ -9,7 +9,8 @@ import { getMetricIcons, hasNerdFont, shouldUseNerdFont } from "./font.js"
 
 const REFRESH_INTERVAL_MS = 2000
 // Windows uses Unicode unless the user explicitly opts into Nerd Font icons.
-const icons = getMetricIcons(shouldUseNerdFont(process.platform as "linux" | "darwin" | "win32", hasNerdFont()))
+const platform = process.platform as "linux" | "darwin" | "win32"
+const icons = getMetricIcons(shouldUseNerdFont(platform, platform === "win32" ? false : hasNerdFont()))
 
 const initialMetrics: SystemMetrics = {
   cpuPercent: null,

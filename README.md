@@ -3,7 +3,7 @@
 ## Install globally in OpenCode
 
 ```powershell
-opencode plugin -g opencode-system-metrics-tui@0.1.3 --force
+opencode plugin -g opencode-system-metrics-tui@0.1.4 --force
 ```
 
 This is the primary installation path. The version must match `package.json`; `--force` asks OpenCode to refresh its package cache. Verify the actual installed artifact afterward:
@@ -40,6 +40,8 @@ The README is available in **Español**, **English**, and **Português**.
 - En Windows, la temperatura de CPU requiere LibreHardwareMonitor ejecutándose como administrador con **Remote Web Server** activo en `http://127.0.0.1:8085`.
 - En Windows, la velocidad de red usa PowerShell y `Get-NetAdapterStatistics`; no agrega una dependencia npm.
 - Las lecturas opcionales de Windows se hacen bajo demanda, con timeout y caché; no hay timers globales de PowerShell.
+- La detección de Nerd Font en Linux/macOS está limitada a rutas conocidas, 2 niveles de profundidad y 256 entradas por directorio; una ruta ausente o inaccesible usa Unicode. Windows no escanea fuentes salvo con `OPENCODE_MONITOR_NERD_FONT=1`.
+- Si una fuente de métricas no responde a tiempo, su intento en caché se abandona de forma segura para permitir reintentos sin cancelar APIs que no aceptan `AbortSignal`.
 
 ### Requisitos
 
@@ -89,7 +91,7 @@ npm publish --access public
 En otro equipo:
 
 ```bash
-opencode plugin opencode-system-metrics-tui@0.1.3
+opencode plugin opencode-system-metrics-tui@0.1.4
 ```
 
 El paquete exporta tanto la raíz (`opencode-system-metrics-tui`) como `./tui`; ambas rutas cargan el mismo bundle TUI.
@@ -99,8 +101,8 @@ El instalador de OpenCode configura el plugin TUI automáticamente. Reinicia Ope
 Publicar en npm e instalar en OpenCode son pasos distintos:
 
 - `npm publish --access public` publica el paquete en npm.
-- `opencode plugin opencode-system-metrics-tui@0.1.3` lo instala solo en el proyecto actual.
-- `opencode plugin -g opencode-system-metrics-tui@0.1.3 --force` lo instala globalmente para todos los proyectos.
+- `opencode plugin opencode-system-metrics-tui@0.1.4` lo instala solo en el proyecto actual.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.4 --force` lo instala globalmente para todos los proyectos.
 
 ### Verificación
 
@@ -131,6 +133,8 @@ npm run build
 - On Windows, CPU temperature requires LibreHardwareMonitor running as administrator with **Remote Web Server** enabled at `http://127.0.0.1:8085`.
 - On Windows, network speed uses PowerShell and `Get-NetAdapterStatistics`; it adds no npm dependency.
 - Optional Windows reads are on demand, timeout-bounded, and cached; no global PowerShell timers are used.
+- Linux/macOS Nerd Font detection is limited to known paths, two directory levels, and 256 entries per directory; missing or inaccessible paths safely fall back to Unicode. Windows does not scan fonts unless `OPENCODE_MONITOR_NERD_FONT=1` is set.
+- When a metric source does not respond in time, its cache attempt is safely abandoned so retries remain possible without cancelling APIs that do not accept `AbortSignal`.
 
 ### Requirements
 
@@ -180,7 +184,7 @@ npm publish --access public
 On another machine:
 
 ```bash
-opencode plugin opencode-system-metrics-tui@0.1.3
+opencode plugin opencode-system-metrics-tui@0.1.4
 ```
 
 The package exports both the root (`opencode-system-metrics-tui`) and `./tui`; both paths load the same TUI bundle.
@@ -190,8 +194,8 @@ The OpenCode installer configures the TUI plugin automatically. Restart OpenCode
 Publishing to npm and installing in OpenCode are separate steps:
 
 - `npm publish --access public` publishes the package to npm.
-- `opencode plugin opencode-system-metrics-tui@0.1.3` installs it for the current project only.
-- `opencode plugin -g opencode-system-metrics-tui@0.1.3 --force` installs it globally for all projects.
+- `opencode plugin opencode-system-metrics-tui@0.1.4` installs it for the current project only.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.4 --force` installs it globally for all projects.
 
 ### Verification
 
@@ -222,6 +226,8 @@ npm run build
 - No Windows, a temperatura da CPU requer o LibreHardwareMonitor executado como administrador com o **Remote Web Server** ativo em `http://127.0.0.1:8085`.
 - No Windows, a velocidade da rede usa o PowerShell e `Get-NetAdapterStatistics`; nenhuma dependência npm é adicionada.
 - As leituras opcionais do Windows são sob demanda, têm timeout e cache; não há timers globais do PowerShell.
+- A detecção de Nerd Font no Linux/macOS é limitada a caminhos conhecidos, dois níveis de profundidade e 256 entradas por diretório; caminhos ausentes ou inacessíveis usam Unicode. O Windows não verifica fontes sem `OPENCODE_MONITOR_NERD_FONT=1`.
+- Quando uma fonte de métricas não responde a tempo, a tentativa em cache é abandonada com segurança para permitir novas tentativas sem cancelar APIs que não aceitam `AbortSignal`.
 
 ### Requisitos
 
@@ -271,7 +277,7 @@ npm publish --access public
 Em outro computador:
 
 ```bash
-opencode plugin opencode-system-metrics-tui@0.1.3
+opencode plugin opencode-system-metrics-tui@0.1.4
 ```
 
 O pacote exporta tanto a raiz (`opencode-system-metrics-tui`) quanto `./tui`; os dois caminhos carregam o mesmo bundle TUI.
@@ -281,8 +287,8 @@ O instalador do OpenCode configura o plugin TUI automaticamente. Reinicie o Open
 Publicar no npm e instalar no OpenCode são etapas diferentes:
 
 - `npm publish --access public` publica o pacote no npm.
-- `opencode plugin opencode-system-metrics-tui@0.1.3` instala o plugin apenas no projeto atual.
-- `opencode plugin -g opencode-system-metrics-tui@0.1.3 --force` instala o plugin globalmente para todos os projetos.
+- `opencode plugin opencode-system-metrics-tui@0.1.4` instala o plugin apenas no projeto atual.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.4 --force` instala o plugin globalmente para todos os projetos.
 
 ### Verificação
 

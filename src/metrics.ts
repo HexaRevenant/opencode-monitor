@@ -32,13 +32,16 @@ export function parseMonitorTemperature(value: string | undefined): number | und
 async function readLibreHardwareMonitorTemperature(): Promise<number | undefined> {
   const response = await fetch("http://127.0.0.1:8085/data.json", { signal: AbortSignal.timeout(2_000) })
   if (!response.ok) return undefined
-  const root = (await response.json()) as MonitorNode
+  const root = (await response.json()) as unknown
+  if (root === null || typeof root !== "object") return undefined
   const sensors: MonitorNode[] = []
   const visit = (node: MonitorNode) => {
     if (node.Type === "Temperature" && node.Text !== undefined) sensors.push(node)
-    for (const child of node.Children ?? []) visit(child)
+    for (const child of Array.isArray(node.Children) ? node.Children : []) {
+      if (child !== null && typeof child === "object") visit(child)
+    }
   }
-  visit(root)
+  visit(root as MonitorNode)
   const cpuSensor = sensors.find((sensor) => sensor.Text === "CPU Package") ??
     sensors.find((sensor) => sensor.Text === "Core Average") ??
     sensors.find((sensor) => sensor.Text === "Core Max")
@@ -46,12 +49,15 @@ async function readLibreHardwareMonitorTemperature(): Promise<number | undefined
 }
 
 export function parseWindowsNetworkOutput(stdout: string): NetworkSample[] {
-  const parsed = JSON.parse(stdout.trim()) as
-    | { Name?: string; ReceivedBytes?: number; SentBytes?: number }
-    | Array<{ Name?: string; ReceivedBytes?: number; SentBytes?: number }>
-  const rows = Array.isArray(parsed) ? parsed : [parsed]
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stdout.trim())
+  } catch {
+    return []
+  }
+  const rows = (Array.isArray(parsed) ? parsed : [parsed]).filter((item): item is Record<string, unknown> => item !== null && typeof item === "object")
   return rows.map((item) => ({
-    iface: item.Name,
+    iface: typeof item.Name === "string" ? item.Name : undefined,
     rx_bytes: finite(item.ReceivedBytes) ?? 0,
     tx_bytes: finite(item.SentBytes) ?? 0,
   }))
@@ -141,15 +147,16 @@ export function selectGpuMetrics(graphics: { controllers: Array<{
     gpuMemoryTotalBytes: null,
     gpuMemoryPercent: null,
   }
-  if (graphics === undefined) return empty
+  if (graphics === undefined || graphics === null || !Array.isArray(graphics.controllers)) return empty
 
   const controller = graphics.controllers
     .map((item) => {
-      const utilization = finite(item.utilizationGpu)
-      const temperature = finite(item.temperatureGpu)
-      const memoryTotal = finite(item.memoryTotal)
-      const memoryFree = finite(item.memoryFree)
-      const memoryUsed = finite(item.memoryUsed) ??
+      const source = item ?? {}
+      const utilization = finite(source.utilizationGpu)
+      const temperature = finite(source.temperatureGpu)
+      const memoryTotal = finite(source.memoryTotal)
+      const memoryFree = finite(source.memoryFree)
+      const memoryUsed = finite(source.memoryUsed) ??
         (memoryTotal !== null && memoryFree !== null ? Math.max(0, memoryTotal - memoryFree) : null)
       const hasMemory = memoryUsed !== null && memoryTotal !== null && memoryTotal > 0
       return { utilization, temperature, memoryUsed, memoryTotal, hasMemory }
@@ -182,6 +189,7 @@ export function readCachedMetric<T>(
   cacheMs = SLOW_METRIC_CACHE_MS,
   now = Date.now(),
   unavailableCacheMs = cacheMs,
+  timeoutMs?: number,
 ): Promise<T | undefined> {
   if (state.inFlight !== undefined) return state.inFlight
   if (state.lastFailureAt !== undefined && now - state.lastFailureAt < unavailableCacheMs) {
@@ -190,20 +198,24 @@ export function readCachedMetric<T>(
   if (now - state.lastAttemptAt < cacheMs) return Promise.resolve(state.value)
 
   state.lastAttemptAt = now
-  state.inFlight = reader()
-    .then((value) => {
+  let flight!: Promise<T | undefined>
+  flight = (async () => {
+    try {
+      const value = timeoutMs === undefined ? await reader() : await withTimeout(reader(), timeoutMs)
       state.value = value
       state.lastFailureAt = undefined
       return value
-    })
-    .catch(() => {
+    } catch {
       state.lastFailureAt = now
       return state.value
-    })
-    .finally(() => {
-      state.inFlight = undefined
-    })
-  return state.inFlight
+    } finally {
+      // A timed-out reader may still resolve later. Do not let that old
+      // attempt clear a newer in-flight attempt.
+      if (state.inFlight === flight) state.inFlight = undefined
+    }
+  })()
+  state.inFlight = flight
+  return flight
 }
 
 const cachedCpuTemperature: CachedMetric<Awaited<ReturnType<typeof si.cpuTemperature>>> = {
@@ -285,15 +297,16 @@ export async function readMetrics(): Promise<SystemMetrics> {
   ])
 
   const [temperature, graphics, network] = await Promise.allSettled([
-    withTimeout(readCachedMetric(cachedCpuTemperature, isWindows ? readWindowsCpuTemperature : () => si.cpuTemperature(), TEMPERATURE_CACHE_MS), 2_500),
-    withTimeout(readCachedMetric(cachedGraphics, () => si.graphics(), SLOW_METRIC_CACHE_MS), 2_500),
-    withTimeout(readCachedMetric(
+    readCachedMetric(cachedCpuTemperature, isWindows ? readWindowsCpuTemperature : () => si.cpuTemperature(), TEMPERATURE_CACHE_MS, Date.now(), TEMPERATURE_CACHE_MS, 2_500),
+    readCachedMetric(cachedGraphics, () => si.graphics(), SLOW_METRIC_CACHE_MS, Date.now(), SLOW_METRIC_CACHE_MS, 2_500),
+    readCachedMetric(
       cachedNetwork,
       isWindows ? readWindowsNetworkMetrics : () => si.networkStats("*"),
       isWindows ? NETWORK_CACHE_MS : 2_000,
       Date.now(),
       OPTIONAL_SOURCE_BACKOFF_MS,
-    ), 1_500),
+      1_500,
+    ),
   ])
 
   const cpuPercent = load.status === "fulfilled" ? finite(load.value.currentLoad) : null
@@ -315,7 +328,7 @@ export async function readMetrics(): Promise<SystemMetrics> {
   let downloadBytesPerSecond: number | null = null
   let uploadBytesPerSecond: number | null = null
   if (network.status === "fulfilled" && network.value !== undefined) {
-    const samples = network.value as NetworkSample[]
+    const samples = Array.isArray(network.value) ? network.value : []
     const timestamp = Date.now()
     const rx = samples.reduce((total, item) => total + (finite(item.rx_bytes) ?? 0), 0)
     const tx = samples.reduce((total, item) => total + (finite(item.tx_bytes) ?? 0), 0)

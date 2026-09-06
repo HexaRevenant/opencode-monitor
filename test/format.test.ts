@@ -1,7 +1,10 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
+import { mkdtemp, mkdir, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { formatGiB, formatPercent, formatRate, formatTemperature } from "../src/format.js"
-import { getFontDirectories, getMetricIcons, isNerdFontFile, shouldUseNerdFont } from "../src/font.js"
+import { getFontDirectories, getMetricIcons, hasNerdFont, isNerdFontFile, shouldUseNerdFont } from "../src/font.js"
 
 describe("metric formatting", () => {
   it("formats percentages and unavailable values", () => {
@@ -43,5 +46,23 @@ describe("Hack Nerd Font paths and fallback", () => {
     assert.notEqual(getMetricIcons(true).vram, getMetricIcons(false).vram)
     assert.equal(shouldUseNerdFont("win32", true, {}), false)
     assert.equal(shouldUseNerdFont("win32", true, { OPENCODE_MONITOR_NERD_FONT: "1" }), true)
+  })
+
+  it("does not scan Windows fonts unless explicitly opted in", async () => {
+    const home = await mkdtemp(join(tmpdir(), "opencode-monitor-fonts-"))
+    const fonts = join(home, "AppData", "Local", "Microsoft", "Windows", "Fonts")
+    await mkdir(fonts, { recursive: true })
+    await writeFile(join(fonts, "HackNerdFont-Regular.ttf"), "")
+    const env = { LOCALAPPDATA: join(home, "AppData", "Local"), WINDIR: home }
+
+    assert.equal(hasNerdFont("win32", home, env), false)
+    assert.equal(shouldUseNerdFont("win32", hasNerdFont("win32", home, env), { OPENCODE_MONITOR_NERD_FONT: "1" }), true)
+  })
+
+  it("falls back safely for missing font paths", async () => {
+    const home = await mkdtemp(join(tmpdir(), "opencode-monitor-fonts-"))
+    assert.equal(hasNerdFont("win32", join(home, "missing"), {
+      LOCALAPPDATA: join(home, "missing"), WINDIR: join(home, "missing"), OPENCODE_MONITOR_NERD_FONT: "1",
+    }), false)
   })
 })
