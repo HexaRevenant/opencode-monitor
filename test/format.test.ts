@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import { formatGiB, formatPercent, formatRate, formatTemperature } from "../src/format.js"
-import { getFontDirectories, getMetricIcons, isHackNerdFontFile } from "../src/font.js"
+import { getFontDirectories, getMetricIcons, isNerdFontFile } from "../src/font.js"
 
 describe("metric formatting", () => {
   it("formats percentages and unavailable values", () => {
@@ -34,8 +34,9 @@ describe("Hack Nerd Font paths and fallback", () => {
   })
 
   it("recognizes Hack Nerd Font files and keeps Unicode fallback icons", () => {
-    assert.equal(isHackNerdFontFile("HackNerdFont-Regular.ttf"), true)
-    assert.equal(isHackNerdFontFile("OtherFont.ttf"), false)
+    assert.equal(isNerdFontFile("HackNerdFont-Regular.ttf"), true)
+    assert.equal(isNerdFontFile("JetBrainsMonoNerdFontMono-Regular.ttf"), true)
+    assert.equal(isNerdFontFile("OtherFont.ttf"), false)
     assert.equal(getMetricIcons(false).cpu, "▣")
     assert.equal(getMetricIcons(false).vram, "◈")
     assert.notEqual(getMetricIcons(true).cpu, getMetricIcons(false).cpu)

@@ -4,7 +4,7 @@ import { join as posixJoin, win32 } from "node:path"
 
 export type SupportedPlatform = "linux" | "darwin" | "win32"
 
-const FONT_FILE_PATTERN = /^HackNerdFont(?:Mono|Propo|Console)?-[A-Za-z0-9-]+\.(?:ttf|otf)$/i
+const NERD_FONT_FILE_PATTERN = /NerdFont[A-Za-z0-9-]*[-_][A-Za-z0-9-]+\.(?:ttf|otf)$/i
 
 export function getFontDirectories(platform: SupportedPlatform, home = homedir(), env: NodeJS.ProcessEnv = process.env): string[] {
   if (platform === "darwin") return [posixJoin(home, "Library", "Fonts"), "/Library/Fonts", "/System/Library/Fonts"]
@@ -16,17 +16,19 @@ export function getFontDirectories(platform: SupportedPlatform, home = homedir()
   return [posixJoin(home, ".local", "share", "fonts"), posixJoin(home, ".fonts"), "/usr/local/share/fonts", "/usr/share/fonts"]
 }
 
-export function isHackNerdFontFile(fileName: string): boolean {
-  return FONT_FILE_PATTERN.test(fileName)
+export function isNerdFontFile(fileName: string): boolean {
+  return NERD_FONT_FILE_PATTERN.test(fileName)
 }
 
-export function hasHackNerdFont(platform: SupportedPlatform = process.platform as SupportedPlatform, home = homedir(), env: NodeJS.ProcessEnv = process.env): boolean {
+export const isHackNerdFontFile = isNerdFontFile
+
+export function hasNerdFont(platform: SupportedPlatform = process.platform as SupportedPlatform, home = homedir(), env: NodeJS.ProcessEnv = process.env): boolean {
   const containsFont = (directory: string): boolean => {
     if (!existsSync(directory)) return false
     try {
       return readdirSync(directory, { withFileTypes: true }).some((entry) => {
         const path = platform === "win32" ? win32.join(directory, entry.name) : posixJoin(directory, entry.name)
-        return entry.isFile() ? isHackNerdFontFile(entry.name) : entry.isDirectory() && containsFont(path)
+        return entry.isFile() ? isNerdFontFile(entry.name) : entry.isDirectory() && containsFont(path)
       })
     } catch {
       return false
@@ -34,6 +36,8 @@ export function hasHackNerdFont(platform: SupportedPlatform = process.platform a
   }
   return getFontDirectories(platform, home, env).some(containsFont)
 }
+
+export const hasHackNerdFont = hasNerdFont
 
 export const nerdFontIcons = {
   title: "\u{f0379}",

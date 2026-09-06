@@ -4,11 +4,11 @@ import { TextAttributes } from "@opentui/core"
 import type { TuiPlugin, TuiPluginModule, TuiThemeCurrent } from "@opencode-ai/plugin/tui"
 import { formatGiB, formatPercent, formatRate, formatTemperature } from "./format.js"
 import { readMetrics, type SystemMetrics } from "./metrics.js"
-import { getMetricIcons, hasHackNerdFont } from "./font.js"
+import { getMetricIcons, hasNerdFont } from "./font.js"
 
 const REFRESH_INTERVAL_MS = 2000
 // Use Nerd Font icons when installed; retain Unicode icons as fallback.
-const icons = getMetricIcons(hasHackNerdFont())
+const icons = getMetricIcons(hasNerdFont())
 
 const initialMetrics: SystemMetrics = {
   cpuPercent: null,
