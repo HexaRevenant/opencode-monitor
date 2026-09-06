@@ -68,7 +68,7 @@ npm publish --access public
 En otro equipo:
 
 ```bash
-opencode plugin @tu-organizacion/system-metrics-tui
+opencode plugin opencode-system-metrics-tui
 ```
 
 El instalador de OpenCode configura el plugin TUI automáticamente. Reinicia OpenCode después de instalarlo.
@@ -145,7 +145,7 @@ npm publish --access public
 On another machine:
 
 ```bash
-opencode plugin @your-organization/system-metrics-tui
+opencode plugin opencode-system-metrics-tui
 ```
 
 The OpenCode installer configures the TUI plugin automatically. Restart OpenCode after installation.
@@ -222,7 +222,7 @@ npm publish --access public
 Em outro computador:
 
 ```bash
-opencode plugin @sua-organizacao/system-metrics-tui
+opencode plugin opencode-system-metrics-tui
 ```
 
 O instalador do OpenCode configura o plugin TUI automaticamente. Reinicie o OpenCode após a instalação.
