@@ -1,0 +1,11 @@
+node_modules/
+src/
+test/
+.opencode/
+.atl/
+.git/
+.gitignore
+.npmignore
+tsconfig.json
+package-lock.json
+*.log
