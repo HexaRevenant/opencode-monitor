@@ -134,6 +134,8 @@ npm run build
 - Windows uses Unicode icons by default (installed-font detection does not change selection); Linux/macOS use Nerd Font only when installed and retain Unicode fallback.
 - On Windows, visible Unicode icons are used by default because OpenCode cannot detect the terminal's active font.
 - Supports Linux, macOS, and Windows when the operating system exposes the metrics.
+- CPU and RAM use native, read-only paths without subprocesses during normal operation: Linux reads `/proc/stat` and `/proc/meminfo`; Windows uses `GetSystemTimes` and `GlobalMemoryStatusEx` through the lazy Koffi integration; macOS uses Mach host statistics and `hw.memsize` on both Intel and Apple Silicon. If native loading or a read fails, the existing `systeminformation` path is used with the existing timeout and cache protections.
+- Native CPU percentages are deltas between consecutive samples; the first sample is intentionally unavailable. Counter resets, malformed data, and API failures fall back safely. Apple Silicon retains unified-memory semantics and does not treat system RAM as discrete VRAM.
 - On macOS, GPU utilization uses `ioreg` and temperatures use the Stats helper when installed; missing helpers leave only that metric unavailable without interrupting the plugin. Intel retains the discrete-GPU `systeminformation` fallback.
 - On Windows, CPU temperature requires LibreHardwareMonitor running as administrator with **Remote Web Server** enabled at `http://127.0.0.1:8085`.
 - On Windows, network speed uses one native `GetIfTable2` call from `iphlpapi.dll` through Koffi; the PowerShell path remains only as a bounded fallback when the native API cannot load.

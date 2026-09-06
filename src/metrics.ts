@@ -2,6 +2,7 @@ import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import si from "systeminformation"
 import { networkRate, readWithFallback, readWindowsNetworkCounters, type NativeNetworkCounters } from "./windows-network.js"
+import { readNativeMetrics } from "./native-metrics.js"
 
 const execFileAsync = promisify(execFile)
 export const DEFAULT_METRIC_TIMEOUT_MS = 1_500
@@ -392,11 +393,26 @@ async function readWindowsCpuTemperature(): Promise<{ main: number } | undefined
 }
 
 export async function readMetrics(): Promise<SystemMetrics> {
-  const [load, memory, hardwareArchitecture] = await Promise.allSettled([
-    withTimeout(si.currentLoad(), DEFAULT_METRIC_TIMEOUT_MS),
-    withTimeout(si.mem(), isWindows ? WINDOWS_MEMORY_TIMEOUT_MS : DEFAULT_METRIC_TIMEOUT_MS),
+  const [native, hardwareArchitecture] = await Promise.allSettled([
+    withTimeout(readNativeMetrics(), isWindows ? WINDOWS_MEMORY_TIMEOUT_MS : DEFAULT_METRIC_TIMEOUT_MS),
     readMacHardwareArchitecture(),
   ])
+  let cpuPercent = native.status === "fulfilled" ? finite(native.value.cpuPercent) : null
+  let memoryTotalBytes = native.status === "fulfilled" ? finite(native.value.memoryTotalBytes) : null
+  let memoryAvailableBytes = native.status === "fulfilled" ? finite(native.value.memoryAvailableBytes) : null
+  let fallbackMemoryUsedBytes: number | null = null
+  if (native.status !== "fulfilled") {
+    const [load, memory] = await Promise.allSettled([
+      withTimeout(si.currentLoad(), DEFAULT_METRIC_TIMEOUT_MS),
+      withTimeout(si.mem(), isWindows ? WINDOWS_MEMORY_TIMEOUT_MS : DEFAULT_METRIC_TIMEOUT_MS),
+    ])
+    cpuPercent = load.status === "fulfilled" ? finite(load.value.currentLoad) : null
+    memoryTotalBytes = memory.status === "fulfilled" ? finite(memory.value.total) : null
+    memoryAvailableBytes = memory.status === "fulfilled" ? finite(memory.value.available) : null
+    fallbackMemoryUsedBytes = memoryTotalBytes !== null && memoryAvailableBytes !== null
+      ? Math.max(0, memoryTotalBytes - memoryAvailableBytes)
+      : memory.status === "fulfilled" ? finite(memory.value.used) : null
+  }
 
   const [temperature, graphics, network, mac] = await Promise.allSettled([
     readCachedMetric(cachedCpuTemperature, isWindows ? readWindowsCpuTemperature : () => si.cpuTemperature(), TEMPERATURE_CACHE_MS, Date.now(), TEMPERATURE_CACHE_MS, 2_500),
@@ -414,15 +430,10 @@ export async function readMetrics(): Promise<SystemMetrics> {
       : Promise.resolve(undefined),
   ])
 
-  const cpuPercent = load.status === "fulfilled" ? finite(load.value.currentLoad) : null
-  const memoryTotalBytes = memory.status === "fulfilled" ? finite(memory.value.total) : null
-  const memoryAvailableBytes = memory.status === "fulfilled" ? finite(memory.value.available) : null
-  const memoryUsedBytes =
+  const memoryUsedBytes = fallbackMemoryUsedBytes ?? (
     memoryTotalBytes !== null && memoryAvailableBytes !== null
       ? Math.max(0, memoryTotalBytes - memoryAvailableBytes)
-      : memory.status === "fulfilled"
-        ? finite(memory.value.used)
-        : null
+      : null)
   const memoryPercent =
     memoryUsedBytes !== null && memoryTotalBytes !== null && memoryTotalBytes > 0
       ? (memoryUsedBytes / memoryTotalBytes) * 100

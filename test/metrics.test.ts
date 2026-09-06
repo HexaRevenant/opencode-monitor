@@ -18,6 +18,24 @@ import {
   type CachedMetric,
 } from "../src/metrics.js"
 import { mapWindowsNetworkRows, networkRate, readWithFallback } from "../src/windows-network.js"
+import { cpuPercentFromCounters, mapMemoryBytes, parseLinuxCpuCounters, parseLinuxMemoryInfo } from "../src/native-metrics.js"
+
+describe("native CPU and RAM parsing", () => {
+  it("parses Linux counters and preserves first-sample behavior", () => {
+    const first = parseLinuxCpuCounters("cpu  10 2 3 80 5 0 0 0 0 0\ncpu0 1 0 0 8")!
+    const second = parseLinuxCpuCounters("cpu  15 2 8 90 5 0 0 0 0 0")!
+    assert.equal(cpuPercentFromCounters(first, undefined), undefined)
+    assert.equal(cpuPercentFromCounters(second, first), 50)
+    assert.equal(cpuPercentFromCounters(first, second), undefined)
+  })
+
+  it("maps Linux memory and rejects malformed input", () => {
+    assert.deepEqual(parseLinuxMemoryInfo("MemTotal:       1000 kB\nMemAvailable:    250 kB"), { totalBytes: 1024000, availableBytes: 256000 })
+    assert.deepEqual(parseLinuxMemoryInfo("MemTotal: 1000 kB\nMemFree: 100 kB\nBuffers: 50 kB\nCached: 25 kB"), { totalBytes: 1024000, availableBytes: 179200 })
+    assert.equal(parseLinuxMemoryInfo("MemTotal: malformed"), undefined)
+    assert.equal(mapMemoryBytes(Number.MAX_SAFE_INTEGER + 1, 0), undefined)
+  })
+})
 
 describe("Windows metric parsing", () => {
   it("keeps Windows operation timeouts bounded and ordered", () => {
