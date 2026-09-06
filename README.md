@@ -20,6 +20,8 @@ The README is available in **Español**, **English**, and **Português**.
 - Iconos Hack Nerd Font con fallback Unicode.
 - En Windows usa iconos Unicode visibles de forma predeterminada, porque OpenCode no puede detectar la fuente activa de la terminal.
 - Soporte para Linux, macOS y Windows cuando el sistema expone las métricas.
+- En Windows, la temperatura de CPU requiere LibreHardwareMonitor ejecutándose como administrador con **Remote Web Server** activo en `http://127.0.0.1:8085`.
+- En Windows, la velocidad de red usa PowerShell y `Get-NetAdapterStatistics`; no agrega una dependencia npm.
 
 ### Requisitos
 
@@ -104,6 +106,8 @@ npm run build
 - Hack Nerd Font icons with Unicode fallback.
 - On Windows, visible Unicode icons are used by default because OpenCode cannot detect the terminal's active font.
 - Supports Linux, macOS, and Windows when the operating system exposes the metrics.
+- On Windows, CPU temperature requires LibreHardwareMonitor running as administrator with **Remote Web Server** enabled at `http://127.0.0.1:8085`.
+- On Windows, network speed uses PowerShell and `Get-NetAdapterStatistics`; it adds no npm dependency.
 
 ### Requirements
 
@@ -188,6 +192,8 @@ npm run build
 - Ícones Hack Nerd Font com fallback Unicode.
 - No Windows, ícones Unicode visíveis são usados por padrão porque o OpenCode não consegue detectar a fonte ativa do terminal.
 - Suporte para Linux, macOS e Windows quando o sistema disponibiliza as métricas.
+- No Windows, a temperatura da CPU requer o LibreHardwareMonitor executado como administrador com o **Remote Web Server** ativo em `http://127.0.0.1:8085`.
+- No Windows, a velocidade da rede usa o PowerShell e `Get-NetAdapterStatistics`; nenhuma dependência npm é adicionada.
 
 ### Requisitos
 
