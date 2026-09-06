@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import { formatGiB, formatPercent, formatRate, formatTemperature } from "../src/format.js"
-import { getFontDirectories, getMetricIcons, isNerdFontFile } from "../src/font.js"
+import { getFontDirectories, getMetricIcons, isNerdFontFile, shouldUseNerdFont } from "../src/font.js"
 
 describe("metric formatting", () => {
   it("formats percentages and unavailable values", () => {
@@ -41,5 +41,7 @@ describe("Hack Nerd Font paths and fallback", () => {
     assert.equal(getMetricIcons(false).vram, "◈")
     assert.notEqual(getMetricIcons(true).cpu, getMetricIcons(false).cpu)
     assert.notEqual(getMetricIcons(true).vram, getMetricIcons(false).vram)
+    assert.equal(shouldUseNerdFont("win32", true, {}), false)
+    assert.equal(shouldUseNerdFont("win32", true, { OPENCODE_MONITOR_NERD_FONT: "1" }), true)
   })
 })

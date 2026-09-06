@@ -54,3 +54,12 @@ export const unicodeIcons = { title: "▦", cpu: "▣", ram: "▤", gpu: "◆", 
 export function getMetricIcons(useNerdFont: boolean) {
   return useNerdFont ? nerdFontIcons : unicodeIcons
 }
+
+export function shouldUseNerdFont(
+  platform: SupportedPlatform,
+  detected: boolean,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  if (platform === "win32") return env.OPENCODE_MONITOR_NERD_FONT === "1"
+  return detected
+}

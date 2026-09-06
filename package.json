@@ -5,6 +5,10 @@
   "license": "MIT",
   "type": "module",
   "exports": {
+    ".": {
+      "types": "./dist/tui.d.ts",
+      "import": "./dist/tui.js"
+    },
     "./tui": {
       "types": "./dist/tui.d.ts",
       "import": "./dist/tui.js"
@@ -17,9 +21,9 @@
   ],
   "scripts": {
     "build": "bun scripts/build.ts && tsc --emitDeclarationOnly --declaration --outDir dist",
-    "test": "tsx --test test/format.test.ts",
+    "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "install-font": "tsx scripts/install-hack-font.ts"
+    "install-font": "node dist/install-hack-font.js"
   },
   "engines": {
     "node": ">=18"

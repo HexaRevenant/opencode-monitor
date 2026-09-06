@@ -15,13 +15,14 @@ The README is available in **Español**, **English**, and **Português**.
 - GPU: utilización y temperatura.
 - GPU VRAM: memoria usada, total y porcentaje.
 - Red: velocidad de descarga y subida en tiempo real.
-- Actualización cada 2 segundos.
+- CPU, RAM y red se consultan con una cadencia general de 2 segundos; GPU, VRAM y temperaturas usan una caché expirable de 10 segundos para reducir el coste sin congelar los sensores.
 - Colores compatibles con el tema activo de OpenCode.
-- Iconos Hack Nerd Font con fallback Unicode.
+- Iconos Unicode por defecto en Windows (la detección de fuentes instaladas no cambia la selección); Linux/macOS usan Nerd Font solo si está instalada y mantienen fallback Unicode.
 - En Windows usa iconos Unicode visibles de forma predeterminada, porque OpenCode no puede detectar la fuente activa de la terminal.
 - Soporte para Linux, macOS y Windows cuando el sistema expone las métricas.
 - En Windows, la temperatura de CPU requiere LibreHardwareMonitor ejecutándose como administrador con **Remote Web Server** activo en `http://127.0.0.1:8085`.
 - En Windows, la velocidad de red usa PowerShell y `Get-NetAdapterStatistics`; no agrega una dependencia npm.
+- Las lecturas opcionales de Windows se hacen bajo demanda, con timeout y caché; no hay timers globales de PowerShell.
 
 ### Requisitos
 
@@ -38,7 +39,7 @@ npm run install-font
 opencode
 ```
 
-`npm run install-font` instala **Hack Nerd Font** únicamente para el usuario actual. No se ejecuta automáticamente durante `npm install` y solicita confirmación antes de descargar la fuente oficial.
+`npm run install-font` ejecuta el instalador compilado incluido en `dist/`, instala **Hack Nerd Font** únicamente para el usuario actual, no se ejecuta automáticamente durante `npm install` y solicita confirmación antes de descargar la fuente oficial.
 
 Comandos adicionales:
 
@@ -57,7 +58,7 @@ La fuente se instala solo para el usuario actual:
 - macOS: `~/Library/Fonts`
 - Windows: `%LOCALAPPDATA%\\Microsoft\\Windows\\Fonts`
 
-Después de instalarla, selecciona **Hack Nerd Font Mono** en la terminal y reinicia la terminal y OpenCode. Si no se selecciona una Nerd Font, el plugin usa iconos Unicode de fallback.
+Después de instalarla, selecciona **Hack Nerd Font Mono** en la terminal y reinicia la terminal y OpenCode. En Windows, para optar explícitamente por iconos Nerd Font define `OPENCODE_MONITOR_NERD_FONT=1`; no se activa solo por detectar archivos instalados.
 
 ### Publicación e instalación desde npm
 
@@ -73,6 +74,8 @@ En otro equipo:
 ```bash
 opencode plugin opencode-system-metrics-tui
 ```
+
+El paquete exporta tanto la raíz (`opencode-system-metrics-tui`) como `./tui`; ambas rutas cargan el mismo bundle TUI.
 
 El instalador de OpenCode configura el plugin TUI automáticamente. Reinicia OpenCode después de instalarlo.
 
@@ -101,13 +104,14 @@ npm run build
 - GPU: utilization and temperature.
 - GPU VRAM: used memory, total memory, and percentage.
 - Network: live download and upload speeds.
-- Refreshes every 2 seconds.
+- CPU, RAM, and network use the 2-second general cadence; GPU, VRAM, and temperatures use an expiring 10-second cache to reduce cost without freezing sensors.
 - Uses the active OpenCode theme colors.
-- Hack Nerd Font icons with Unicode fallback.
+- Windows uses Unicode icons by default (installed-font detection does not change selection); Linux/macOS use Nerd Font only when installed and retain Unicode fallback.
 - On Windows, visible Unicode icons are used by default because OpenCode cannot detect the terminal's active font.
 - Supports Linux, macOS, and Windows when the operating system exposes the metrics.
 - On Windows, CPU temperature requires LibreHardwareMonitor running as administrator with **Remote Web Server** enabled at `http://127.0.0.1:8085`.
 - On Windows, network speed uses PowerShell and `Get-NetAdapterStatistics`; it adds no npm dependency.
+- Optional Windows reads are on demand, timeout-bounded, and cached; no global PowerShell timers are used.
 
 ### Requirements
 
@@ -124,7 +128,7 @@ npm run install-font
 opencode
 ```
 
-`npm run install-font` installs **Hack Nerd Font** for the current user only. It is not executed automatically by `npm install` and asks for confirmation before downloading the official font.
+`npm run install-font` runs the compiled installer included in `dist/`, installs **Hack Nerd Font** for the current user only, is not executed automatically by `npm install`, and asks for confirmation before downloading the official font.
 
 Extra commands:
 
@@ -143,7 +147,7 @@ The font is installed for the current user only:
 - macOS: `~/Library/Fonts`
 - Windows: `%LOCALAPPDATA%\\Microsoft\\Windows\\Fonts`
 
-After installation, select **Hack Nerd Font Mono** in the terminal and restart the terminal and OpenCode. If a Nerd Font is not selected, the plugin uses Unicode fallback icons.
+After installation, select **Hack Nerd Font Mono** in the terminal and restart the terminal and OpenCode. On Windows, explicitly opt into Nerd Font icons with `OPENCODE_MONITOR_NERD_FONT=1`; installed-font detection alone never enables them.
 
 ### Publishing and npm installation
 
@@ -159,6 +163,8 @@ On another machine:
 ```bash
 opencode plugin opencode-system-metrics-tui
 ```
+
+The package exports both the root (`opencode-system-metrics-tui`) and `./tui`; both paths load the same TUI bundle.
 
 The OpenCode installer configures the TUI plugin automatically. Restart OpenCode after installation.
 
@@ -187,13 +193,14 @@ npm run build
 - GPU: utilização e temperatura.
 - GPU VRAM: memória usada, total e porcentagem.
 - Rede: velocidades de download e upload em tempo real.
-- Atualização a cada 2 segundos.
+- CPU, RAM e rede usam a cadência geral de 2 segundos; GPU, VRAM e temperaturas usam uma cache expirável de 10 segundos para reduzir o custo sem congelar os sensores.
 - Usa as cores do tema ativo do OpenCode.
-- Ícones Hack Nerd Font com fallback Unicode.
+- No Windows, os ícones Unicode são usados por padrão (detectar fontes instaladas não muda a seleção); Linux/macOS usam Nerd Font apenas quando instalada e mantêm fallback Unicode.
 - No Windows, ícones Unicode visíveis são usados por padrão porque o OpenCode não consegue detectar a fonte ativa do terminal.
 - Suporte para Linux, macOS e Windows quando o sistema disponibiliza as métricas.
 - No Windows, a temperatura da CPU requer o LibreHardwareMonitor executado como administrador com o **Remote Web Server** ativo em `http://127.0.0.1:8085`.
 - No Windows, a velocidade da rede usa o PowerShell e `Get-NetAdapterStatistics`; nenhuma dependência npm é adicionada.
+- As leituras opcionais do Windows são sob demanda, têm timeout e cache; não há timers globais do PowerShell.
 
 ### Requisitos
 
@@ -210,7 +217,7 @@ npm run install-font
 opencode
 ```
 
-`npm run install-font` instala a **Hack Nerd Font** somente para o usuário atual. O comando não é executado automaticamente durante `npm install` e pede confirmação antes de baixar a fonte oficial.
+`npm run install-font` executa o instalador compilado incluído em `dist/`, instala a **Hack Nerd Font** somente para o usuário atual, não é executado automaticamente durante `npm install` e pede confirmação antes de baixar a fonte oficial.
 
 Comandos adicionais:
 
@@ -229,7 +236,7 @@ A fonte é instalada somente para o usuário atual:
 - macOS: `~/Library/Fonts`
 - Windows: `%LOCALAPPDATA%\\Microsoft\\Windows\\Fonts`
 
-Depois da instalação, selecione **Hack Nerd Font Mono** no terminal e reinicie o terminal e o OpenCode. Se uma Nerd Font não estiver selecionada, o plugin usará ícones Unicode de fallback.
+Depois da instalação, selecione **Hack Nerd Font Mono** no terminal e reinicie o terminal e o OpenCode. No Windows, opte explicitamente pelos ícones Nerd Font com `OPENCODE_MONITOR_NERD_FONT=1`; detectar arquivos instalados sozinho nunca os ativa.
 
 ### Publicação e instalação pelo npm
 
@@ -245,6 +252,8 @@ Em outro computador:
 ```bash
 opencode plugin opencode-system-metrics-tui
 ```
+
+O pacote exporta tanto a raiz (`opencode-system-metrics-tui`) quanto `./tui`; os dois caminhos carregam o mesmo bundle TUI.
 
 O instalador do OpenCode configura o plugin TUI automaticamente. Reinicie o OpenCode após a instalação.
 
