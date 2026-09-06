@@ -69,7 +69,7 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.cpu}</text>
         <text fg={props.theme.text}> CPU    </text>
-        <text fg={props.theme.textMuted}>{formatPercent(metrics().cpuPercent)} · {formatTemperature(metrics().cpuTemperatureCelsius)}</text>
+        <text fg={props.theme.textMuted}>{formatPercent(metrics().cpuPercent)} · {icons.thermometer} {formatTemperature(metrics().cpuTemperatureCelsius)}</text>
       </box>
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.ram}</text>
@@ -81,7 +81,7 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.gpu}</text>
         <text fg={props.theme.text}> GPU    </text>
-        <text fg={props.theme.textMuted}>{formatPercent(metrics().gpuPercent)} · {formatTemperature(metrics().gpuTemperatureCelsius)}</text>
+        <text fg={props.theme.textMuted}>{formatPercent(metrics().gpuPercent)} · {icons.thermometer} {formatTemperature(metrics().gpuTemperatureCelsius)}</text>
       </box>
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.vram}</text>
