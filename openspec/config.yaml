@@ -1,0 +1,62 @@
+schema: spec-driven
+
+context: |
+  Project: opencode-system-metrics-tui
+  Stack: TypeScript 7, Node.js ESM, SolidJS, OpenTUI, systeminformation
+  Architecture: OpenCode TUI plugin with metrics, presentation, and installation scripts
+  Style: strict TypeScript, NodeNext modules, existing npm scripts, English technical artifacts
+  Workspace root: /Users/hexa/Documents/GitHub/opencode-monitor
+
+strict_tdd: true
+
+projects:
+  - path: "."
+    stack: "TypeScript 7 / Node.js ESM / SolidJS / OpenTUI"
+    test_command: "npm test"
+    test_framework: "tsx --test (Node.js test runner)"
+    test_layers:
+      unit: true
+      integration: false
+      e2e: false
+    coverage_command: ""
+    linter_command: ""
+    typecheck_command: "npm run typecheck"
+    formatter_command: ""
+    build_command: "npm run build"
+
+testing:
+  strict_tdd: true
+  workspace_test_command: "npm test"
+  runner: "tsx --test test/*.test.ts"
+  unit: true
+  integration: false
+  e2e: false
+  coverage: false
+  linter: false
+  type_checker: "tsc --noEmit"
+  formatter: false
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Document architecture decisions with rationale
+    - Include sequence diagrams for complex flows
+  tasks:
+    - Group by phase and use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    guidelines:
+      - Follow existing strict TypeScript and npm script conventions
+    tdd: true
+    test_command: "npm test"
+  verify:
+    test_command: "npm test"
+    build_command: "npm run build"
+    typecheck_command: "npm run typecheck"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

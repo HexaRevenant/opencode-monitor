@@ -60,7 +60,7 @@ export function gpuMemoryLabel(
   platform: string = process.platform,
 ): string {
   if (platform !== "darwin") return "GPU VRAM"
-  if (architecture === "arm64") return "Unified Memory"
+  if (architecture === "arm64") return "RAM"
   if (architecture === "x86_64") return "GPU VRAM"
   return "Memory"
 }

@@ -31,7 +31,7 @@ The README is available in **Español**, **English**, and **Português**.
 - RAM: memoria usada, total y porcentaje.
 - GPU: utilización y temperatura.
 - GPU VRAM: memoria usada, total y porcentaje.
-- En Apple Silicon, la fila se muestra como **Unified Memory**; no se presenta la memoria total del sistema como VRAM usada porque no existe una fuente fiable de uso dinámico.
+- En Apple Silicon, la fila se muestra como **RAM** y usa los contadores generales de memoria del sistema.
 - Red: velocidad de descarga y subida en tiempo real.
 - CPU, RAM y red se consultan con una cadencia general de 2 segundos; GPU, VRAM y temperaturas usan una caché expirable de 10 segundos para reducir el coste sin congelar los sensores.
 - Colores compatibles con el tema activo de OpenCode.
@@ -126,7 +126,7 @@ npm run build
 - RAM: used memory, total memory, and percentage.
 - GPU: utilization and temperature.
 - GPU VRAM: used memory, total memory, and percentage.
-- On Apple Silicon, the row is labeled **Unified Memory**; total system memory is never presented as live VRAM usage because no reliable dynamic source is available.
+- On Apple Silicon, the row is labeled **RAM** and uses the system-wide memory counters.
 - Network: live download and upload speeds.
 - CPU, RAM, and network use the 2-second general cadence; GPU, VRAM, and temperatures use an expiring 10-second cache to reduce cost without freezing sensors.
 - Uses the active OpenCode theme colors.
@@ -221,6 +221,7 @@ npm run build
 - RAM: memória usada, total e porcentagem.
 - GPU: utilização e temperatura.
 - GPU VRAM: memória usada, total e porcentagem.
+- No Apple Silicon, a linha de memória compartilhada é exibida como **RAM** e usa os contadores gerais de memória do sistema.
 - Rede: velocidades de download e upload em tempo real.
 - CPU, RAM e rede usam a cadência geral de 2 segundos; GPU, VRAM e temperaturas usam uma cache expirável de 10 segundos para reduzir o custo sem congelar os sensores.
 - Usa as cores do tema ativo do OpenCode.

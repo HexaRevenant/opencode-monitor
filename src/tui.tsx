@@ -1,5 +1,5 @@
 /** @jsxImportSource @opentui/solid */
-import { createSignal, onCleanup, onMount } from "solid-js"
+import { createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import type { Accessor, Setter } from "solid-js"
 import { TextAttributes } from "@opentui/core"
 import type { TuiPlugin, TuiPluginModule, TuiThemeCurrent } from "@opencode-ai/plugin/tui"
@@ -96,6 +96,20 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
   onMount(startMetricsPolling)
   onCleanup(stopMetricsPolling)
 
+  const gpuMemory = createMemo(() => {
+    const metrics = metricsState.sharedMetrics()
+    const unified = metrics.gpuMemoryIsUnified === true
+    return {
+      icon: unified ? icons.ram : icons.vram,
+      label: gpuMemoryLabel(
+        unified ? "arm64" : metrics.gpuMemoryIsUnified === false ? "x86_64" : undefined,
+      ),
+      usedBytes: unified ? metrics.memoryUsedBytes : metrics.gpuMemoryUsedBytes,
+      totalBytes: unified ? metrics.memoryTotalBytes : metrics.gpuMemoryTotalBytes,
+      percent: unified ? metrics.memoryPercent : metrics.gpuMemoryPercent,
+    }
+  })
+
   return (
     <box flexDirection="column" paddingLeft={0} paddingRight={0}>
       <text fg={props.theme.text} attributes={TextAttributes.BOLD}>{icons.title} {systemMetricsTitle()}</text>
@@ -117,10 +131,10 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
         <text fg={props.theme.textMuted}>{formatPercent(metricsState.sharedMetrics().gpuPercent)} · {icons.thermometer} {formatTemperature(metricsState.sharedMetrics().gpuTemperatureCelsius)}</text>
       </box>
       <box flexDirection="row">
-        <text fg={props.theme.success}>{icons.vram}</text>
-        <text fg={props.theme.text}> {gpuMemoryLabel(metricsState.sharedMetrics().gpuMemoryIsUnified === true ? "arm64" : metricsState.sharedMetrics().gpuMemoryIsUnified === false ? "x86_64" : undefined)} </text>
+        <text fg={props.theme.success}>{gpuMemory().icon}</text>
+        <text fg={props.theme.text}> {gpuMemory().label} </text>
         <text fg={props.theme.textMuted}>
-          {formatGiB(metricsState.sharedMetrics().gpuMemoryUsedBytes)} / {formatGiB(metricsState.sharedMetrics().gpuMemoryTotalBytes)} ({formatPercent(metricsState.sharedMetrics().gpuMemoryPercent)})
+          {formatGiB(gpuMemory().usedBytes)} / {formatGiB(gpuMemory().totalBytes)} ({formatPercent(gpuMemory().percent)})
         </text>
       </box>
       <box flexDirection="row">

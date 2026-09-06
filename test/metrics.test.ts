@@ -55,8 +55,8 @@ describe("macOS metric parsing", () => {
     assert.equal(await detectMacHardwareArchitecture(async () => { throw new Error("not found") }, "x64"), "x86_64")
   })
 
-  it("never labels unified memory as GPU VRAM", () => {
-    assert.equal(gpuMemoryLabel("arm64", "darwin"), "Unified Memory")
+  it("labels Apple Silicon unified memory as RAM", () => {
+    assert.equal(gpuMemoryLabel("arm64", "darwin"), "RAM")
     assert.equal(gpuMemoryLabel("x86_64", "darwin"), "GPU VRAM")
     assert.equal(gpuMemoryLabel(undefined, "darwin"), "Memory")
   })
