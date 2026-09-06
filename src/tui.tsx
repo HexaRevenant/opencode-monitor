@@ -6,7 +6,7 @@ import { formatGiB, formatPercent, formatRate, formatTemperature } from "./forma
 import { readMetrics, type SystemMetrics } from "./metrics.js"
 import { getMetricIcons, hasHackNerdFont } from "./font.js"
 
-const REFRESH_INTERVAL_MS = process.platform === "win32" ? 5000 : 2000
+const REFRESH_INTERVAL_MS = 2000
 // Windows terminals do not expose the active font to plugins; Unicode is the reliable fallback.
 const icons = getMetricIcons(process.platform !== "win32" && hasHackNerdFont())
 
