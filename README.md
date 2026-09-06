@@ -73,6 +73,12 @@ opencode plugin opencode-system-metrics-tui
 
 El instalador de OpenCode configura el plugin TUI automáticamente. Reinicia OpenCode después de instalarlo.
 
+Publicar en npm e instalar en OpenCode son pasos distintos:
+
+- `npm publish --access public` publica el paquete en npm.
+- `opencode plugin opencode-system-metrics-tui` lo instala solo en el proyecto actual.
+- `opencode plugin -g opencode-system-metrics-tui` lo instala globalmente para todos los proyectos.
+
 ### Verificación
 
 ```bash
@@ -150,6 +156,12 @@ opencode plugin opencode-system-metrics-tui
 
 The OpenCode installer configures the TUI plugin automatically. Restart OpenCode after installation.
 
+Publishing to npm and installing in OpenCode are separate steps:
+
+- `npm publish --access public` publishes the package to npm.
+- `opencode plugin opencode-system-metrics-tui` installs it for the current project only.
+- `opencode plugin -g opencode-system-metrics-tui` installs it globally for all projects.
+
 ### Verification
 
 ```bash
@@ -226,6 +238,12 @@ opencode plugin opencode-system-metrics-tui
 ```
 
 O instalador do OpenCode configura o plugin TUI automaticamente. Reinicie o OpenCode após a instalação.
+
+Publicar no npm e instalar no OpenCode são etapas diferentes:
+
+- `npm publish --access public` publica o pacote no npm.
+- `opencode plugin opencode-system-metrics-tui` instala o plugin apenas no projeto atual.
+- `opencode plugin -g opencode-system-metrics-tui` instala o plugin globalmente para todos os projetos.
 
 ### Verificação
 
