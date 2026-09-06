@@ -3,6 +3,7 @@ import { promisify } from "node:util"
 import si from "systeminformation"
 
 const execFileAsync = promisify(execFile)
+const WINDOWS_NETWORK_TIMEOUT_MS = 1_500
 
 export interface SystemMetrics {
   cpuPercent: number | null
@@ -65,7 +66,7 @@ async function readWindowsNetworkSample(): Promise<NetworkSample[]> {
       "-Command",
       "Get-NetAdapterStatistics | Select-Object Name,ReceivedBytes,SentBytes | ConvertTo-Json -Compress",
     ],
-    { windowsHide: true, timeout: 15_000, maxBuffer: 1024 * 1024 },
+    { windowsHide: true, timeout: WINDOWS_NETWORK_TIMEOUT_MS, maxBuffer: 1024 * 1024 },
   )
   return parseWindowsNetworkOutput(stdout)
 }
@@ -115,12 +116,14 @@ export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Pr
 
 const SLOW_METRIC_CACHE_MS = 10_000
 const TEMPERATURE_CACHE_MS = 10_000
+const OPTIONAL_SOURCE_BACKOFF_MS = 30_000
 const isWindows = process.platform === "win32"
 const NETWORK_CACHE_MS = 2_000
 
 export type CachedMetric<T> = {
   value: T | undefined
   lastAttemptAt: number
+  lastFailureAt?: number
   inFlight: Promise<T | undefined> | undefined
 }
 
@@ -178,17 +181,25 @@ export function readCachedMetric<T>(
   reader: () => Promise<T>,
   cacheMs = SLOW_METRIC_CACHE_MS,
   now = Date.now(),
+  unavailableCacheMs = cacheMs,
 ): Promise<T | undefined> {
   if (state.inFlight !== undefined) return state.inFlight
+  if (state.lastFailureAt !== undefined && now - state.lastFailureAt < unavailableCacheMs) {
+    return Promise.resolve(state.value)
+  }
   if (now - state.lastAttemptAt < cacheMs) return Promise.resolve(state.value)
 
   state.lastAttemptAt = now
   state.inFlight = reader()
     .then((value) => {
       state.value = value
+      state.lastFailureAt = undefined
       return value
     })
-    .catch(() => state.value)
+    .catch(() => {
+      state.lastFailureAt = now
+      return state.value
+    })
     .finally(() => {
       state.inFlight = undefined
     })
@@ -196,6 +207,12 @@ export function readCachedMetric<T>(
 }
 
 const cachedCpuTemperature: CachedMetric<Awaited<ReturnType<typeof si.cpuTemperature>>> = {
+  value: undefined,
+  lastAttemptAt: 0,
+  inFlight: undefined,
+}
+
+const cachedLibreHardwareMonitorTemperature: CachedMetric<number> = {
   value: undefined,
   lastAttemptAt: 0,
   inFlight: undefined,
@@ -234,19 +251,29 @@ async function readWindowsNetworkMetrics(): Promise<NetworkSample[]> {
 }
 
 async function readWindowsCpuTemperature(): Promise<{ main: number } | undefined> {
-  let value: number | undefined
   try {
-    value = await readLibreHardwareMonitorTemperature()
+    const native = await si.cpuTemperature()
+    const value = finite(native.main) ?? finite(native.max) ?? undefined
+    if (value !== undefined) return { main: value }
   } catch {
-    // Try systeminformation below when LibreHardwareMonitor is unavailable.
+    // Try LibreHardwareMonitor when the native source is unavailable.
   }
-  if (value === undefined) {
-    try {
-      const fallback = await si.cpuTemperature()
-      value = finite(fallback.main) ?? finite(fallback.max) ?? undefined
-    } catch {
-      // Keep the temperature unavailable when Windows exposes no sensor.
-    }
+
+  const now = Date.now()
+  const value = await readCachedMetric(
+    cachedLibreHardwareMonitorTemperature,
+    async () => {
+      const temperature = await readLibreHardwareMonitorTemperature()
+      if (temperature === undefined) throw new Error("LibreHardwareMonitor temperature unavailable")
+      return temperature
+    },
+    TEMPERATURE_CACHE_MS,
+    now,
+    OPTIONAL_SOURCE_BACKOFF_MS,
+  )
+  if (cachedLibreHardwareMonitorTemperature.lastFailureAt !== undefined &&
+    now - cachedLibreHardwareMonitorTemperature.lastFailureAt < OPTIONAL_SOURCE_BACKOFF_MS) {
+    return undefined
   }
   return value === undefined ? undefined : { main: value }
 }
@@ -260,7 +287,13 @@ export async function readMetrics(): Promise<SystemMetrics> {
   const [temperature, graphics, network] = await Promise.allSettled([
     withTimeout(readCachedMetric(cachedCpuTemperature, isWindows ? readWindowsCpuTemperature : () => si.cpuTemperature(), TEMPERATURE_CACHE_MS), 2_500),
     withTimeout(readCachedMetric(cachedGraphics, () => si.graphics(), SLOW_METRIC_CACHE_MS), 2_500),
-    withTimeout(readCachedMetric(cachedNetwork, isWindows ? readWindowsNetworkMetrics : () => si.networkStats("*"), isWindows ? NETWORK_CACHE_MS : 2_000), 1_500),
+    withTimeout(readCachedMetric(
+      cachedNetwork,
+      isWindows ? readWindowsNetworkMetrics : () => si.networkStats("*"),
+      isWindows ? NETWORK_CACHE_MS : 2_000,
+      Date.now(),
+      OPTIONAL_SOURCE_BACKOFF_MS,
+    ), 1_500),
   ])
 
   const cpuPercent = load.status === "fulfilled" ? finite(load.value.currentLoad) : null

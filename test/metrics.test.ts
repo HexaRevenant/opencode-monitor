@@ -34,6 +34,25 @@ describe("metric cache and GPU fallback", () => {
     assert.equal(await readCachedMetric(state, async () => { throw new Error("timeout") }, 0, 1), 7)
   })
 
+  it("deduplicates a failed read and backs off before retrying", async () => {
+    const state: CachedMetric<number> = { value: undefined, lastAttemptAt: 0, inFlight: undefined }
+    let reads = 0
+    const reader = async () => {
+      reads += 1
+      throw new Error("unavailable")
+    }
+
+    const first = readCachedMetric(state, reader, 1000, 2_000)
+    const second = readCachedMetric(state, reader, 1000, 2_000)
+    assert.equal(await first, undefined)
+    assert.equal(await second, undefined)
+    assert.equal(reads, 1)
+    assert.equal(await readCachedMetric(state, reader, 1000, 3_001, 10_000), undefined)
+    assert.equal(reads, 1)
+    assert.equal(await readCachedMetric(state, reader, 1000, 12_001, 10_000), undefined)
+    assert.equal(reads, 2)
+  })
+
   it("rejects a slow sensor without waiting for it", async () => {
     await assert.rejects(withTimeout(new Promise<number>((resolve) => setTimeout(() => resolve(1), 50)), 5), /metric timeout/)
   })
