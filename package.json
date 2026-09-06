@@ -2,6 +2,7 @@
   "name": "@opencode-monitor/system-metrics-tui",
   "version": "0.1.0",
   "description": "OpenCode TUI sidebar plugin for live system metrics",
+  "license": "MIT",
   "type": "module",
   "exports": {
     "./tui": {
