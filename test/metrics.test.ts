@@ -17,6 +17,7 @@ import {
   withTimeout,
   type CachedMetric,
 } from "../src/metrics.js"
+import { mapWindowsNetworkRows, networkRate, readWithFallback } from "../src/windows-network.js"
 
 describe("Windows metric parsing", () => {
   it("keeps Windows operation timeouts bounded and ordered", () => {
@@ -35,6 +36,26 @@ describe("Windows metric parsing", () => {
   })
 
   it("parses LibreHardwareMonitor temperatures", () => assert.equal(parseMonitorTemperature("51,5 °C"), 51.5))
+
+  it("maps only active hardware interfaces and aggregates bigint counters", () => {
+    assert.deepEqual(mapWindowsNetworkRows([
+      { InterfaceAndOperStatusFlags: 1, OperStatus: 1, AccessType: 2, Type: 6, InOctets: 2n ** 54n, OutOctets: 9n },
+      { InterfaceAndOperStatusFlags: 0, OperStatus: 1, AccessType: 2, Type: 6, InOctets: 100n, OutOctets: 100n },
+      { InterfaceAndOperStatusFlags: 3, OperStatus: 1, AccessType: 2, Type: 6, InOctets: 5n, OutOctets: 5n },
+      { InterfaceAndOperStatusFlags: 1, OperStatus: 1, AccessType: 1, Type: 24, InOctets: 7n, OutOctets: 7n },
+    ]), { rx: 2n ** 54n, tx: 9n })
+  })
+
+  it("handles counter resets without negative rates", () => {
+    assert.deepEqual(networkRate({ rx: 10n, tx: 20n }, { rx: 100n, tx: 200n }, 2_000), { rx: 0, tx: 0 })
+  })
+
+  it("uses the bounded fallback only when the native reader fails", async () => {
+    const fallback = await readWithFallback(async () => { throw new Error("unavailable") }, async () => 42)
+    assert.deepEqual(fallback, { value: 42, usedFallback: true })
+    assert.deepEqual(await readWithFallback(async () => 7, async () => 42), { value: 7, usedFallback: false })
+    await assert.rejects(readWithFallback(async () => { throw new Error("native") }, async () => { throw new Error("fallback") }), /fallback/)
+  })
 })
 
 describe("macOS metric parsing", () => {

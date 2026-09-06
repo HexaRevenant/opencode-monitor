@@ -34,6 +34,7 @@
     "@opentui/core": "^0.5.10",
     "@opentui/solid": "^0.5.10",
     "opencode-system-metrics-tui": "^0.1.8",
+    "koffi": "^3.2.1",
     "solid-js": "^1.9.12",
     "systeminformation": "^5.33.8"
   },

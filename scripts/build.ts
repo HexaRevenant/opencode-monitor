@@ -6,7 +6,7 @@ const result = await Bun.build({
   target: "node",
   format: "esm",
   plugins: [solidPlugin],
-  external: ["@opencode-ai/plugin/tui", "@opentui/core", "@opentui/solid", "solid-js", "systeminformation"],
+  external: ["@opencode-ai/plugin/tui", "@opentui/core", "@opentui/solid", "koffi", "solid-js", "systeminformation"],
   naming: "[name].js",
 })
 

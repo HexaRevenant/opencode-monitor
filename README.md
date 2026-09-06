@@ -40,7 +40,8 @@ The README is available in **Español**, **English**, and **Português**.
 - Soporte para Linux, macOS y Windows cuando el sistema expone las métricas.
 - En macOS, la utilización de GPU usa `ioreg` y las temperaturas usan el helper de Stats si está instalado; si cualquiera de ellos falta, esa métrica queda como no disponible sin interrumpir el plugin. En Intel se conserva el fallback de GPU discreta de `systeminformation`.
 - En Windows, la temperatura de CPU requiere LibreHardwareMonitor ejecutándose como administrador con **Remote Web Server** activo en `http://127.0.0.1:8085`.
-- En Windows, la velocidad de red usa PowerShell y `Get-NetAdapterStatistics`; no agrega una dependencia npm.
+- En Windows, la velocidad de red usa una llamada nativa `GetIfTable2` de `iphlpapi.dll` mediante Koffi; la ruta PowerShell queda como fallback acotado si la API nativa no está disponible.
+- La agregación nativa incluye interfaces de hardware activas, excluye interfaces de filtro, loopback y túnel, y suma sus contadores `InOctets`/`OutOctets`.
 - Las lecturas opcionales de Windows se hacen bajo demanda, con timeout y caché; no hay timers globales de PowerShell.
 - La detección de Nerd Font en Linux/macOS está limitada a rutas conocidas, 2 niveles de profundidad y 256 entradas por directorio; una ruta ausente o inaccesible usa Unicode. Windows no escanea fuentes salvo con `OPENCODE_MONITOR_NERD_FONT=1`.
 - Si una fuente de métricas no responde a tiempo, su intento en caché se abandona de forma segura para permitir reintentos sin cancelar APIs que no aceptan `AbortSignal`.
@@ -135,7 +136,8 @@ npm run build
 - Supports Linux, macOS, and Windows when the operating system exposes the metrics.
 - On macOS, GPU utilization uses `ioreg` and temperatures use the Stats helper when installed; missing helpers leave only that metric unavailable without interrupting the plugin. Intel retains the discrete-GPU `systeminformation` fallback.
 - On Windows, CPU temperature requires LibreHardwareMonitor running as administrator with **Remote Web Server** enabled at `http://127.0.0.1:8085`.
-- On Windows, network speed uses PowerShell and `Get-NetAdapterStatistics`; it adds no npm dependency.
+- On Windows, network speed uses one native `GetIfTable2` call from `iphlpapi.dll` through Koffi; the PowerShell path remains only as a bounded fallback when the native API cannot load.
+- Native aggregation includes active hardware interfaces, excludes filter, loopback, and tunnel interfaces, and sums their `InOctets`/`OutOctets` counters.
 - Optional Windows reads are on demand, timeout-bounded, and cached; no global PowerShell timers are used.
 - Linux/macOS Nerd Font detection is limited to known paths, two directory levels, and 256 entries per directory; missing or inaccessible paths safely fall back to Unicode. Windows does not scan fonts unless `OPENCODE_MONITOR_NERD_FONT=1` is set.
 - When a metric source does not respond in time, its cache attempt is safely abandoned so retries remain possible without cancelling APIs that do not accept `AbortSignal`.
@@ -229,7 +231,8 @@ npm run build
 - No Windows, ícones Unicode visíveis são usados por padrão porque o OpenCode não consegue detectar a fonte ativa do terminal.
 - Suporte para Linux, macOS e Windows quando o sistema disponibiliza as métricas.
 - No Windows, a temperatura da CPU requer o LibreHardwareMonitor executado como administrador com o **Remote Web Server** ativo em `http://127.0.0.1:8085`.
-- No Windows, a velocidade da rede usa o PowerShell e `Get-NetAdapterStatistics`; nenhuma dependência npm é adicionada.
+- No Windows, a velocidade da rede usa uma chamada nativa `GetIfTable2` de `iphlpapi.dll` via Koffi; o PowerShell permanece apenas como fallback limitado quando a API nativa não pode ser carregada.
+- A agregação nativa inclui interfaces de hardware ativas, exclui interfaces de filtro, loopback e túnel, e soma os contadores `InOctets`/`OutOctets`.
 - As leituras opcionais do Windows são sob demanda, têm timeout e cache; não há timers globais do PowerShell.
 - A detecção de Nerd Font no Linux/macOS é limitada a caminhos conhecidos, dois níveis de profundidade e 256 entradas por diretório; caminhos ausentes ou inacessíveis usam Unicode. O Windows não verifica fontes sem `OPENCODE_MONITOR_NERD_FONT=1`.
 - Quando uma fonte de métricas não responde a tempo, a tentativa em cache é abandonada com segurança para permitir novas tentativas sem cancelar APIs que não aceitam `AbortSignal`.

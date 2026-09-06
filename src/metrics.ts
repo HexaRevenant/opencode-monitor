@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import si from "systeminformation"
+import { networkRate, readWithFallback, readWindowsNetworkCounters, type NativeNetworkCounters } from "./windows-network.js"
 
 const execFileAsync = promisify(execFile)
 export const DEFAULT_METRIC_TIMEOUT_MS = 1_500
@@ -141,7 +142,7 @@ export function parseWindowsNetworkOutput(stdout: string): NetworkSample[] {
   }))
 }
 
-async function readWindowsNetworkSample(): Promise<NetworkSample[]> {
+async function readWindowsNetworkFallback(): Promise<NetworkSample[]> {
   const { stdout } = await execFileAsync(
     "powershell.exe",
     [
@@ -336,23 +337,30 @@ const cachedNetwork: CachedMetric<NetworkSample[]> = {
 }
 
 let previousWindowsNetwork: { timestamp: number; rx: number; tx: number } | undefined
+let previousNativeWindowsNetwork: { timestamp: number; counters: NativeNetworkCounters } | undefined
 
 async function readWindowsNetworkMetrics(): Promise<NetworkSample[]> {
-  const samples = await readWindowsNetworkSample()
   const timestamp = Date.now()
-  const rx = samples.reduce((total, item) => total + (finite(item.rx_bytes) ?? 0), 0)
-  const tx = samples.reduce((total, item) => total + (finite(item.tx_bytes) ?? 0), 0)
-  const seconds = previousWindowsNetwork === undefined
-    ? undefined
-    : Math.max((timestamp - previousWindowsNetwork.timestamp) / 1000, 0.001)
-  const result = [{
-    rx_bytes: rx,
-    tx_bytes: tx,
-    rx_sec: seconds === undefined ? undefined : Math.max(0, rx - previousWindowsNetwork!.rx) / seconds,
-    tx_sec: seconds === undefined ? undefined : Math.max(0, tx - previousWindowsNetwork!.tx) / seconds,
-  }]
+  const fallback = async () => {
+    const samples = await readWindowsNetworkFallback()
+    const rx = samples.reduce((total, item) => total + (finite(item.rx_bytes) ?? 0), 0)
+    const tx = samples.reduce((total, item) => total + (finite(item.tx_bytes) ?? 0), 0)
+    return { rx: BigInt(rx), tx: BigInt(tx) }
+  }
+  const { value: counters, usedFallback } = await readWithFallback(readWindowsNetworkCounters, fallback)
+  if (!usedFallback) {
+    const rate = networkRate(counters, previousNativeWindowsNetwork?.counters, previousNativeWindowsNetwork === undefined ? 0 : timestamp - previousNativeWindowsNetwork.timestamp)
+    previousNativeWindowsNetwork = { timestamp, counters }
+    return [{ rx_bytes: Number(counters.rx), tx_bytes: Number(counters.tx), rx_sec: rate.rx, tx_sec: rate.tx }]
+  }
+  // Native loading/API failures use the old bounded path, never both readers.
+  const seconds = previousWindowsNetwork === undefined ? undefined : Math.max((timestamp - previousWindowsNetwork.timestamp) / 1000, 0.001)
+  const rx = Number(counters.rx)
+  const tx = Number(counters.tx)
+  const rxSec = seconds === undefined ? undefined : Math.max(0, rx - previousWindowsNetwork!.rx) / seconds
+  const txSec = seconds === undefined ? undefined : Math.max(0, tx - previousWindowsNetwork!.tx) / seconds
   previousWindowsNetwork = { timestamp, rx, tx }
-  return result
+  return [{ rx_bytes: rx, tx_bytes: tx, rx_sec: rxSec, tx_sec: txSec }]
 }
 
 async function readWindowsCpuTemperature(): Promise<{ main: number } | undefined> {
