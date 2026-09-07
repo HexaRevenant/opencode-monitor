@@ -1,0 +1,35 @@
+schema: gentle-ai.sdd-preproposal/v1
+revision: 2
+change: align-readme-verification
+exploration:
+  outcome: available
+  reference: openspec/changes/align-readme-verification/exploration.md
+research:
+  request: repository documentation only
+  classes:
+    - documentation
+  admission:
+    capability: gentle-ai.sdd-research-capability/v1
+    declared_grants:
+      documentation:
+        - scope: repository-local
+          access: read-only
+      open-web: []
+    admitted: true
+    reason: Explicit documentation grant authorized for repository-local read-only evidence; open-web excluded.
+  outcome: done
+  reference: openspec/changes/align-readme-verification/research.md
+  evidence_references:
+    - openspec/changes/align-readme-verification/research.md#claim-1
+    - openspec/changes/align-readme-verification/research.md#claim-2
+    - openspec/changes/align-readme-verification/research.md#claim-3
+    - openspec/changes/align-readme-verification/research.md#claim-4
+product_decisions: pending
+proposal_ready: false
+recovery:
+  retained_intent: Correct the focused Portuguese README verification and Windows metrics wording without changing product files.
+  canonical_scope:
+    - Portuguese verification command parity.
+    - Portuguese Windows network helper wording.
+    - No README or product-file edits during research.
+  next_action: Confirm pending product decisions, then evaluate proposal readiness.

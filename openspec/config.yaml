@@ -2,10 +2,12 @@ schema: spec-driven
 
 context: |
   Project: opencode-system-metrics-tui
-  Stack: TypeScript 7, Node.js ESM, SolidJS, OpenTUI, systeminformation
-  Architecture: OpenCode TUI plugin with metrics, presentation, and installation scripts
+  Stack: TypeScript 7, Node.js ESM, SolidJS, OpenTUI, Bun build tooling, systeminformation, Koffi
+  Architecture: OpenCode TUI plugin with native and fallback metric readers, Solid/OpenTUI presentation, and safe installation helpers
   Style: strict TypeScript, NodeNext modules, existing npm scripts, English technical artifacts
-  Workspace root: /Users/hexa/Documents/GitHub/opencode-monitor
+  Workspace root: /home/hexa/datos/Documentos/GitHub/opencode-monitor
+  Detection: 2026-09-07; authoritative workspace contains one root project
+  README: aligned with package scripts, live clock/date behavior, and current package version
 
 strict_tdd: true
 
@@ -35,6 +37,7 @@ testing:
   linter: false
   type_checker: "tsc --noEmit"
   formatter: false
+  validation: "46 tests passed; npm run typecheck and npm run build passed on 2026-09-07"
 
 rules:
   proposal:

@@ -3,8 +3,8 @@
 ## Install globally in OpenCode
 
 ```powershell
-npm install -g opencode-system-metrics-tui@0.1.21
-opencode plugin -g opencode-system-metrics-tui@0.1.21 --force
+npm install -g opencode-system-metrics-tui@0.1.22
+opencode plugin -g opencode-system-metrics-tui@0.1.22 --force
 ```
 
 This is the primary copy/paste installation path. The first command installs the package globally with Node/npm; the second registers it globally in OpenCode and refreshes its package cache. The version must match `package.json`. The helper below skips OpenCode when the expected artifact is already current. Verify the actual installed artifact afterward:
@@ -35,6 +35,20 @@ OpenCode TUI plugin that adds live CPU, RAM, GPU, GPU VRAM, temperature, and net
 
 The README is available in **Español**, **English**, and **Português**.
 
+## Screenshots
+
+### Spanish locale with Nerd Font icons
+
+![System metrics panel in Spanish with Nerd Font icons](docs/images/1.png)
+
+### Spanish locale with Unicode icons
+
+![System metrics panel in Spanish with Unicode icons](docs/images/2.png)
+
+### English locale with Unicode icons
+
+![System metrics panel in English with Unicode icons](docs/images/3.png)
+
 ---
 
 ## Español
@@ -47,6 +61,7 @@ The README is available in **Español**, **English**, and **Português**.
 - GPU VRAM: memoria usada, total y porcentaje.
 - En Apple Silicon, la fila se muestra como **RAM** y usa los contadores generales de memoria del sistema.
 - Red: velocidad de descarga y subida en tiempo real.
+- El panel muestra la hora y la fecha actuales, actualizadas cada segundo.
 - CPU, RAM y red se consultan con una cadencia general de 2 segundos; GPU, VRAM y temperaturas usan una caché expirable de 10 segundos para reducir el coste sin congelar los sensores.
 - Colores compatibles con el tema activo de OpenCode.
 - Iconos Unicode por defecto en Windows (la detección de fuentes instaladas no cambia la selección); Linux/macOS usan Nerd Font solo si está instalada y mantienen fallback Unicode.
@@ -121,7 +136,7 @@ npm publish --access public
 En otro equipo:
 
 ```bash
-opencode plugin opencode-system-metrics-tui@0.1.21
+opencode plugin opencode-system-metrics-tui@0.1.22
 ```
 
 El paquete exporta tanto la raíz (`opencode-system-metrics-tui`) como `./tui`; ambas rutas cargan el mismo bundle TUI.
@@ -131,8 +146,8 @@ El instalador de OpenCode configura el plugin TUI automáticamente. Reinicia Ope
 Publicar en npm e instalar en OpenCode son pasos distintos:
 
 - `npm publish --access public` publica el paquete en npm.
-- `opencode plugin opencode-system-metrics-tui@0.1.21` lo instala solo en el proyecto actual.
-- `opencode plugin -g opencode-system-metrics-tui@0.1.21 --force` lo instala globalmente para todos los proyectos.
+- `opencode plugin opencode-system-metrics-tui@0.1.22` lo instala solo en el proyecto actual.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.22 --force` lo instala globalmente para todos los proyectos.
 
 ### Verificación
 
@@ -156,6 +171,7 @@ npm run build
 - GPU VRAM: used memory, total memory, and percentage.
 - On Apple Silicon, the row is labeled **RAM** and uses the system-wide memory counters.
 - Network: live download and upload speeds.
+- The panel shows the current time and date, updated every second.
 - CPU, RAM, and network use the 2-second general cadence; GPU, VRAM, and temperatures use an expiring 10-second cache to reduce cost without freezing sensors.
 - Uses the active OpenCode theme colors.
 - Windows uses Unicode icons by default (installed-font detection does not change selection); Linux/macOS use Nerd Font only when installed and retain Unicode fallback.
@@ -232,7 +248,7 @@ npm publish --access public
 On another machine:
 
 ```bash
-opencode plugin opencode-system-metrics-tui@0.1.21
+opencode plugin opencode-system-metrics-tui@0.1.22
 ```
 
 The package exports both the root (`opencode-system-metrics-tui`) and `./tui`; both paths load the same TUI bundle.
@@ -242,8 +258,8 @@ The OpenCode installer configures the TUI plugin automatically. Restart OpenCode
 Publishing to npm and installing in OpenCode are separate steps:
 
 - `npm publish --access public` publishes the package to npm.
-- `opencode plugin opencode-system-metrics-tui@0.1.21` installs it for the current project only.
-- `opencode plugin -g opencode-system-metrics-tui@0.1.21 --force` installs it globally for all projects.
+- `opencode plugin opencode-system-metrics-tui@0.1.22` installs it for the current project only.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.22 --force` installs it globally for all projects.
 
 ### Verification
 
@@ -267,13 +283,14 @@ npm run build
 - GPU VRAM: memória usada, total e porcentagem.
 - No Apple Silicon, a linha de memória compartilhada é exibida como **RAM** e usa os contadores gerais de memória do sistema.
 - Rede: velocidades de download e upload em tempo real.
+- O painel mostra a hora e a data atuais, atualizadas a cada segundo.
 - CPU, RAM e rede usam a cadência geral de 2 segundos; GPU, VRAM e temperaturas usam uma cache expirável de 10 segundos para reduzir o custo sem congelar os sensores.
 - Usa as cores do tema ativo do OpenCode.
 - No Windows, os ícones Unicode são usados por padrão (detectar fontes instaladas não muda a seleção); Linux/macOS usam Nerd Font apenas quando instalada e mantêm fallback Unicode.
 - No Windows, ícones Unicode visíveis são usados por padrão porque o OpenCode não consegue detectar a fonte ativa do terminal.
 - Suporte para Linux, macOS e Windows quando o sistema disponibiliza as métricas.
 - No Windows, a temperatura da CPU requer o LibreHardwareMonitor executado como administrador com o **Remote Web Server** ativo em `http://127.0.0.1:8085`.
-- No Windows, a velocidade da rede usa uma chamada nativa `GetIfTable2` de `iphlpapi.dll` via Koffi; o PowerShell permanece apenas como fallback limitado quando a API nativa não pode ser carregada.
+- No Windows, a velocidade da rede usa uma chamada nativa `GetIfTable2` de `iphlpapi.dll` via Koffi; sob Bun, reutiliza um helper Node persistente, e o PowerShell permanece como fallback limitado quando o helper ou a API nativa não podem ser carregados.
 - A agregação nativa inclui interfaces de hardware ativas, exclui interfaces de filtro, loopback e túnel, e soma os contadores `InOctets`/`OutOctets`.
 - As leituras opcionais do Windows são sob demanda, têm timeout e cache; não há timers globais do PowerShell.
 - A detecção de Nerd Font no Linux/macOS é limitada a caminhos conhecidos, dois níveis de profundidade e 256 entradas por diretório; caminhos ausentes ou inacessíveis usam Unicode. O Windows não verifica fontes sem `OPENCODE_MONITOR_NERD_FONT=1`.
@@ -340,7 +357,7 @@ npm publish --access public
 Em outro computador:
 
 ```bash
-opencode plugin opencode-system-metrics-tui@0.1.21
+opencode plugin opencode-system-metrics-tui@0.1.22
 ```
 
 O pacote exporta tanto a raiz (`opencode-system-metrics-tui`) quanto `./tui`; os dois caminhos carregam o mesmo bundle TUI.
@@ -350,12 +367,14 @@ O instalador do OpenCode configura o plugin TUI automaticamente. Reinicie o Open
 Publicar no npm e instalar no OpenCode são etapas diferentes:
 
 - `npm publish --access public` publica o pacote no npm.
-- `opencode plugin opencode-system-metrics-tui@0.1.21` instala o plugin apenas no projeto atual.
-- `opencode plugin -g opencode-system-metrics-tui@0.1.21 --force` instala o plugin globalmente para todos os projetos.
+- `opencode plugin opencode-system-metrics-tui@0.1.22` instala o plugin apenas no projeto atual.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.22 --force` instala o plugin globalmente para todos os projetos.
 
 ### Verificação
 
 ```bash
+npm run install-plugin
+npm run verify-installation
 npm test
 npm run typecheck
 npm run build
