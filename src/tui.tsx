@@ -130,9 +130,15 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
 
   return (
     <box flexDirection="column" paddingLeft={0} paddingRight={0}>
-      <text fg={props.theme.textMuted}>{icons.clock} {clock().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}</text>
-      <text fg={props.theme.textMuted}>{icons.calendar} {formatClockDate(clock())}</text>
       <text fg={props.theme.text} attributes={TextAttributes.BOLD}>{icons.title} {systemMetricsTitle()}</text>
+      <box flexDirection="row">
+        <text fg={props.theme.success}>{icons.clock}</text>
+        <text fg={props.theme.textMuted}> {clock().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}</text>
+      </box>
+      <box flexDirection="row">
+        <text fg={props.theme.success}>{icons.calendar}</text>
+        <text fg={props.theme.textMuted}> {formatClockDate(clock())}</text>
+      </box>
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.cpu}</text>
         <text fg={props.theme.text}> CPU    </text>

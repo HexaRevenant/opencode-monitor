@@ -3,7 +3,7 @@
 ## Install globally in OpenCode
 
 ```powershell
-opencode plugin -g opencode-system-metrics-tui@0.1.18 --force
+opencode plugin -g opencode-system-metrics-tui@0.1.19 --force
 ```
 
 This is the primary installation path. The version must match `package.json`; `--force` asks OpenCode to refresh its package cache. The helper below skips OpenCode when the expected artifact is already current. Verify the actual installed artifact afterward:
@@ -120,7 +120,7 @@ npm publish --access public
 En otro equipo:
 
 ```bash
-opencode plugin opencode-system-metrics-tui@0.1.18
+opencode plugin opencode-system-metrics-tui@0.1.19
 ```
 
 El paquete exporta tanto la raíz (`opencode-system-metrics-tui`) como `./tui`; ambas rutas cargan el mismo bundle TUI.
@@ -130,8 +130,8 @@ El instalador de OpenCode configura el plugin TUI automáticamente. Reinicia Ope
 Publicar en npm e instalar en OpenCode son pasos distintos:
 
 - `npm publish --access public` publica el paquete en npm.
-- `opencode plugin opencode-system-metrics-tui@0.1.18` lo instala solo en el proyecto actual.
-- `opencode plugin -g opencode-system-metrics-tui@0.1.18 --force` lo instala globalmente para todos los proyectos.
+- `opencode plugin opencode-system-metrics-tui@0.1.19` lo instala solo en el proyecto actual.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.19 --force` lo instala globalmente para todos los proyectos.
 
 ### Verificación
 
@@ -231,7 +231,7 @@ npm publish --access public
 On another machine:
 
 ```bash
-opencode plugin opencode-system-metrics-tui@0.1.18
+opencode plugin opencode-system-metrics-tui@0.1.19
 ```
 
 The package exports both the root (`opencode-system-metrics-tui`) and `./tui`; both paths load the same TUI bundle.
@@ -241,8 +241,8 @@ The OpenCode installer configures the TUI plugin automatically. Restart OpenCode
 Publishing to npm and installing in OpenCode are separate steps:
 
 - `npm publish --access public` publishes the package to npm.
-- `opencode plugin opencode-system-metrics-tui@0.1.18` installs it for the current project only.
-- `opencode plugin -g opencode-system-metrics-tui@0.1.18 --force` installs it globally for all projects.
+- `opencode plugin opencode-system-metrics-tui@0.1.19` installs it for the current project only.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.19 --force` installs it globally for all projects.
 
 ### Verification
 
@@ -339,7 +339,7 @@ npm publish --access public
 Em outro computador:
 
 ```bash
-opencode plugin opencode-system-metrics-tui@0.1.18
+opencode plugin opencode-system-metrics-tui@0.1.19
 ```
 
 O pacote exporta tanto a raiz (`opencode-system-metrics-tui`) quanto `./tui`; os dois caminhos carregam o mesmo bundle TUI.
@@ -349,8 +349,8 @@ O instalador do OpenCode configura o plugin TUI automaticamente. Reinicie o Open
 Publicar no npm e instalar no OpenCode são etapas diferentes:
 
 - `npm publish --access public` publica o pacote no npm.
-- `opencode plugin opencode-system-metrics-tui@0.1.18` instala o plugin apenas no projeto atual.
-- `opencode plugin -g opencode-system-metrics-tui@0.1.18 --force` instala o plugin globalmente para todos os projetos.
+- `opencode plugin opencode-system-metrics-tui@0.1.19` instala o plugin apenas no projeto atual.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.19 --force` instala o plugin globalmente para todos os projetos.
 
 ### Verificação
 
