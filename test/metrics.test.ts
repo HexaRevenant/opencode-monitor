@@ -18,9 +18,18 @@ import {
   type CachedMetric,
 } from "../src/metrics.js"
 import { mapWindowsNetworkRows, networkRate, readWithFallback } from "../src/windows-network.js"
-import { cpuPercentFromCounters, mapMemoryBytes, parseLinuxCpuCounters, parseLinuxMemoryInfo } from "../src/native-metrics.js"
+import { cpuPercentFromCounters, isNativeReaderAvailable, mapMemoryBytes, parseLinuxCpuCounters, parseLinuxMemoryInfo } from "../src/native-metrics.js"
 
 describe("native CPU and RAM parsing", () => {
+  it("only enables the native reader for supported Node runtimes", () => {
+    assert.equal(isNativeReaderAvailable("darwin", undefined), true)
+    assert.equal(isNativeReaderAvailable("win32", undefined), true)
+    assert.equal(isNativeReaderAvailable("linux", undefined), true)
+    assert.equal(isNativeReaderAvailable("darwin", "1.3.14"), false)
+    assert.equal(isNativeReaderAvailable("linux", "1.3.14"), false)
+    assert.equal(isNativeReaderAvailable("freebsd", undefined), false)
+  })
+
   it("parses Linux counters and preserves first-sample behavior", () => {
     const first = parseLinuxCpuCounters("cpu  10 2 3 80 5 0 0 0 0 0\ncpu0 1 0 0 8")!
     const second = parseLinuxCpuCounters("cpu  15 2 8 90 5 0 0 0 0 0")!

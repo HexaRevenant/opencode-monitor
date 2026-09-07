@@ -56,7 +56,16 @@ export function mapMemoryBytes(totalBytes: number, availableBytes: number): Pick
 type NativeReader = () => Promise<NativeMetricSample>
 let reader: Promise<NativeReader> | undefined
 
+export function isNativeReaderAvailable(platform: NodeJS.Platform, bunVersion: string | undefined): boolean {
+  return bunVersion === undefined && (platform === "linux" || platform === "win32" || platform === "darwin")
+}
+
 export async function readNativeMetrics(): Promise<NativeMetricSample> {
+  const bunVersion = (process.versions as NodeJS.ProcessVersions & { bun?: string }).bun
+  if (!isNativeReaderAvailable(process.platform, bunVersion)) {
+    throw new Error("Native CPU/RAM metrics are unavailable on Bun")
+  }
+
   reader ??= (async () => {
     if (process.platform === "linux") return createLinuxReader()
     if (process.platform === "win32") return createWindowsReader()
