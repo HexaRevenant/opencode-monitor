@@ -92,9 +92,27 @@ function systemMetricsTitle(): string {
   )
 }
 
+function formatClockDate(date: Date): string {
+  return new Intl.DateTimeFormat("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date).replace(",", "")
+}
+
 function MetricsPanel(props: { theme: TuiThemeCurrent }) {
+  const [clock, setClock] = createSignal(new Date())
+  let clockTimer: ReturnType<typeof setInterval> | undefined
+
   onMount(startMetricsPolling)
-  onCleanup(stopMetricsPolling)
+  onMount(() => {
+    clockTimer = setInterval(() => setClock(new Date()), 1000)
+  })
+  onCleanup(() => {
+    stopMetricsPolling()
+    if (clockTimer !== undefined) clearInterval(clockTimer)
+  })
 
   const gpuMemory = createMemo(() => {
     const metrics = metricsState.sharedMetrics()
@@ -112,6 +130,8 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
 
   return (
     <box flexDirection="column" paddingLeft={0} paddingRight={0}>
+      <text fg={props.theme.textMuted}>{icons.clock} {clock().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}</text>
+      <text fg={props.theme.textMuted}>{icons.calendar} {formatClockDate(clock())}</text>
       <text fg={props.theme.text} attributes={TextAttributes.BOLD}>{icons.title} {systemMetricsTitle()}</text>
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.cpu}</text>
