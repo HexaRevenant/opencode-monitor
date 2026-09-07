@@ -1,5 +1,5 @@
 /** @jsxImportSource @opentui/solid */
-import { createMemo, createSignal, onCleanup, onMount } from "solid-js"
+import { Show, createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import type { Accessor, Setter } from "solid-js"
 import { TextAttributes } from "@opentui/core"
 import type { TuiPlugin, TuiPluginModule, TuiThemeCurrent } from "@opencode-ai/plugin/tui"
@@ -130,13 +130,15 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
         <text fg={props.theme.text}> GPU    </text>
         <text fg={props.theme.textMuted}>{formatPercent(metricsState.sharedMetrics().gpuPercent)} · {icons.thermometer} {formatTemperature(metricsState.sharedMetrics().gpuTemperatureCelsius)}</text>
       </box>
-      <box flexDirection="row">
-        <text fg={props.theme.success}>{gpuMemory().icon}</text>
-        <text fg={props.theme.text}> {gpuMemory().label} </text>
-        <text fg={props.theme.textMuted}>
-          {formatGiB(gpuMemory().usedBytes)} / {formatGiB(gpuMemory().totalBytes)} ({formatPercent(gpuMemory().percent)})
-        </text>
-      </box>
+      <Show when={metricsState.sharedMetrics().gpuMemoryIsUnified !== true}>
+        <box flexDirection="row">
+          <text fg={props.theme.success}>{gpuMemory().icon}</text>
+          <text fg={props.theme.text}> {gpuMemory().label} </text>
+          <text fg={props.theme.textMuted}>
+            {formatGiB(gpuMemory().usedBytes)} / {formatGiB(gpuMemory().totalBytes)} ({formatPercent(gpuMemory().percent)})
+          </text>
+        </box>
+      </Show>
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.network}</text>
         <text fg={props.theme.text}> NET </text>
