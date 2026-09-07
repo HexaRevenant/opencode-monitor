@@ -9,6 +9,7 @@ import {
   parseMonitorTemperature,
   parseWindowsNetworkOutput,
   readCachedMetric,
+  readWindowsNetworkFallback,
   readMacMetrics,
   selectGpuMetrics,
   WINDOWS_MEMORY_TIMEOUT_MS,
@@ -87,6 +88,23 @@ describe("Windows metric parsing", () => {
     assert.equal(parseWindowsNetworkOutput('[{"Name":"Wi-Fi","ReceivedBytes":200,"SentBytes":75}]')[0].rx_bytes, 200)
     assert.deepEqual(parseWindowsNetworkOutput("not-json"), [])
     assert.deepEqual(parseWindowsNetworkOutput("null"), [])
+  })
+
+  it("uses the injectable PowerShell fallback contract under Bun", async () => {
+    const calls: Array<{ command: string; args: string[]; timeoutMs: number }> = []
+    const samples = await readWindowsNetworkFallback(async (command, args, timeoutMs) => {
+      calls.push({ command, args, timeoutMs })
+      return '[{"Name":"Ethernet","ReceivedBytes":1000,"SentBytes":250}]'
+    })
+    assert.deepEqual(samples, [{ iface: "Ethernet", rx_bytes: 1000, tx_bytes: 250 }])
+    assert.deepEqual(calls, [{
+      command: "powershell.exe",
+      args: [
+        "-NoProfile", "-NonInteractive", "-Command",
+        "Get-NetAdapterStatistics | Select-Object Name,ReceivedBytes,SentBytes | ConvertTo-Json -Compress",
+      ],
+      timeoutMs: WINDOWS_NETWORK_PROCESS_TIMEOUT_MS,
+    }])
   })
 
   it("parses LibreHardwareMonitor temperatures", () => assert.equal(parseMonitorTemperature("51,5 °C"), 51.5))

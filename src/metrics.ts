@@ -38,6 +38,13 @@ const runCommand: CommandRunner = async (command, args, timeoutMs) => {
   return stdout
 }
 
+const runWindowsCommand: CommandRunner = (command, args, timeoutMs) => new Promise((resolve, reject) => {
+  execFile(command, args, { windowsHide: true, timeout: timeoutMs, maxBuffer: 1024 * 1024 }, (error, stdout) => {
+    if (error !== null) reject(error)
+    else resolve(stdout)
+  })
+})
+
 export type MacHardwareArchitecture = "arm64" | "x86_64"
 
 export async function detectMacHardwareArchitecture(
@@ -143,8 +150,8 @@ export function parseWindowsNetworkOutput(stdout: string): NetworkSample[] {
   }))
 }
 
-async function readWindowsNetworkFallback(): Promise<NetworkSample[]> {
-  const { stdout } = await execFileAsync(
+export async function readWindowsNetworkFallback(runner: CommandRunner = runWindowsCommand): Promise<NetworkSample[]> {
+  const stdout = await runner(
     "powershell.exe",
     [
       "-NoProfile",
@@ -152,7 +159,7 @@ async function readWindowsNetworkFallback(): Promise<NetworkSample[]> {
       "-Command",
       "Get-NetAdapterStatistics | Select-Object Name,ReceivedBytes,SentBytes | ConvertTo-Json -Compress",
     ],
-    { windowsHide: true, timeout: WINDOWS_NETWORK_PROCESS_TIMEOUT_MS, maxBuffer: 1024 * 1024 },
+    WINDOWS_NETWORK_PROCESS_TIMEOUT_MS,
   )
   return parseWindowsNetworkOutput(stdout)
 }
@@ -205,6 +212,7 @@ const SLOW_METRIC_CACHE_MS = 10_000
 const TEMPERATURE_CACHE_MS = 10_000
 const OPTIONAL_SOURCE_BACKOFF_MS = 30_000
 const isWindows = process.platform === "win32"
+const isBun = (process.versions as NodeJS.ProcessVersions & { bun?: string }).bun !== undefined
 const isMac = process.platform === "darwin"
 const NETWORK_CACHE_MS = 2_000
 let macHardwareArchitecture: Promise<MacHardwareArchitecture> | undefined
@@ -393,6 +401,17 @@ async function readWindowsCpuTemperature(): Promise<{ main: number } | undefined
 }
 
 export async function readMetrics(): Promise<SystemMetrics> {
+  const networkMetric = readCachedMetric(
+    cachedNetwork,
+    isWindows ? readWindowsNetworkMetrics : () => si.networkStats("*"),
+    isWindows ? NETWORK_CACHE_MS : 2_000,
+    Date.now(),
+    isWindows && isBun ? NETWORK_CACHE_MS : OPTIONAL_SOURCE_BACKOFF_MS,
+    isWindows ? WINDOWS_NETWORK_OUTER_TIMEOUT_MS : DEFAULT_METRIC_TIMEOUT_MS,
+  )
+  // Bun's Windows systeminformation fallbacks contend with PowerShell startup.
+  // Run the network sample first so its existing timeout remains effective.
+  if (isWindows && isBun) await networkMetric
   const [native, hardwareArchitecture] = await Promise.allSettled([
     withTimeout(readNativeMetrics(), isWindows ? WINDOWS_MEMORY_TIMEOUT_MS : DEFAULT_METRIC_TIMEOUT_MS),
     readMacHardwareArchitecture(),
@@ -417,14 +436,7 @@ export async function readMetrics(): Promise<SystemMetrics> {
   const [temperature, graphics, network, mac] = await Promise.allSettled([
     readCachedMetric(cachedCpuTemperature, isWindows ? readWindowsCpuTemperature : () => si.cpuTemperature(), TEMPERATURE_CACHE_MS, Date.now(), TEMPERATURE_CACHE_MS, 2_500),
     readCachedMetric(cachedGraphics, () => si.graphics(), SLOW_METRIC_CACHE_MS, Date.now(), SLOW_METRIC_CACHE_MS, 2_500),
-    readCachedMetric(
-      cachedNetwork,
-      isWindows ? readWindowsNetworkMetrics : () => si.networkStats("*"),
-      isWindows ? NETWORK_CACHE_MS : 2_000,
-      Date.now(),
-      OPTIONAL_SOURCE_BACKOFF_MS,
-      isWindows ? WINDOWS_NETWORK_OUTER_TIMEOUT_MS : DEFAULT_METRIC_TIMEOUT_MS,
-    ),
+    networkMetric,
     isMac
       ? readCachedMetric(cachedMacMetrics, () => readMacMetrics(), SLOW_METRIC_CACHE_MS, Date.now(), OPTIONAL_SOURCE_BACKOFF_MS, MAC_METRIC_TIMEOUT_MS)
       : Promise.resolve(undefined),
