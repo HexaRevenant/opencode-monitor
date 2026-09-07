@@ -1,6 +1,6 @@
 {
   "name": "opencode-system-metrics-tui",
-  "version": "0.1.22",
+  "version": "0.1.24",
   "description": "OpenCode TUI sidebar plugin for live system metrics",
   "license": "MIT",
   "type": "module",
@@ -17,7 +17,8 @@
   "files": [
     "dist",
     "scripts",
-    "README.md"
+    "README.md",
+    "docs/images"
   ],
   "scripts": {
     "build": "bun scripts/build.ts && tsc --emitDeclarationOnly --declaration --outDir dist",
