@@ -1,8 +1,11 @@
 import { execFile } from "node:child_process"
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
+import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 import si from "systeminformation"
-import { networkRate, readWithFallback, readWindowsNetworkCounters, type NativeNetworkCounters } from "./windows-network.js"
+import { networkRate, readWithFallback, type NativeNetworkCounters } from "./windows-network.js"
 import { readNativeMetrics } from "./native-metrics.js"
+import { parseWindowsMetricsResponse } from "./windows-metrics-helper.js"
 
 const execFileAsync = promisify(execFile)
 export const DEFAULT_METRIC_TIMEOUT_MS = 1_500
@@ -44,6 +47,69 @@ const runWindowsCommand: CommandRunner = (command, args, timeoutMs) => new Promi
     else resolve(stdout)
   })
 })
+
+const WINDOWS_METRICS_HELPER = fileURLToPath(new URL("./windows-metrics-helper.js", import.meta.url))
+
+class WindowsMetricsClient {
+  private child: ChildProcessWithoutNullStreams | undefined
+  private pending: { resolve: (value: NativeNetworkCounters) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> } | undefined
+  private output = ""
+
+  async read(timeoutMs: number): Promise<NativeNetworkCounters> {
+    if (this.pending !== undefined) throw new Error("Windows metrics helper request already in flight")
+    const child = this.ensureChild()
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => this.fail(new Error("Windows metrics helper timeout")), timeoutMs)
+      this.pending = { resolve, reject, timer }
+      child.stdin.write("{}\n", (error) => {
+        if (error != null) this.fail(error)
+      })
+    })
+  }
+
+  private ensureChild(): ChildProcessWithoutNullStreams {
+    if (this.child !== undefined) return this.child
+    const child = spawn("node", [WINDOWS_METRICS_HELPER], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true })
+    this.child = child
+    child.stdout.setEncoding("utf8")
+    child.stdout.on("data", (chunk: string) => {
+      this.output += chunk
+      let newline: number
+      while ((newline = this.output.indexOf("\n")) >= 0) {
+        const line = this.output.slice(0, newline).trim()
+        this.output = this.output.slice(newline + 1)
+        if (line.length === 0 || this.pending === undefined) continue
+        const pending = this.pending
+        this.pending = undefined
+        clearTimeout(pending.timer)
+        try {
+          pending.resolve(parseWindowsMetricsResponse(line))
+        } catch (error) {
+          this.fail(error instanceof Error ? error : new Error(String(error)), pending)
+        }
+      }
+    })
+    child.on("error", (error) => this.fail(error))
+    child.on("close", () => {
+      if (this.pending !== undefined) this.fail(new Error("Windows metrics helper exited"))
+      if (this.child === child) this.child = undefined
+    })
+    return child
+  }
+
+  private fail(error: Error, pending = this.pending): void {
+    if (pending === undefined) return
+    if (this.pending === pending) this.pending = undefined
+    clearTimeout(pending.timer)
+    pending.reject(error)
+    const child = this.child
+    this.child = undefined
+    if (child !== undefined) child.kill()
+    this.output = ""
+  }
+}
+
+const windowsMetricsClient = new WindowsMetricsClient()
 
 export type MacHardwareArchitecture = "arm64" | "x86_64"
 
@@ -356,7 +422,11 @@ async function readWindowsNetworkMetrics(): Promise<NetworkSample[]> {
     const tx = samples.reduce((total, item) => total + (finite(item.tx_bytes) ?? 0), 0)
     return { rx: BigInt(rx), tx: BigInt(tx) }
   }
-  const { value: counters, usedFallback } = await readWithFallback(readWindowsNetworkCounters, fallback)
+  const primary = isWindows && isBun ? () => windowsMetricsClient.read(WINDOWS_NETWORK_PROCESS_TIMEOUT_MS) : async () => {
+    const { readWindowsNetworkCounters } = await import("./windows-network.js")
+    return readWindowsNetworkCounters()
+  }
+  const { value: counters, usedFallback } = await readWithFallback(primary, fallback)
   if (!usedFallback) {
     const rate = networkRate(counters, previousNativeWindowsNetwork?.counters, previousNativeWindowsNetwork === undefined ? 0 : timestamp - previousNativeWindowsNetwork.timestamp)
     previousNativeWindowsNetwork = { timestamp, counters }

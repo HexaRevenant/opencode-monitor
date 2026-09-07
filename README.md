@@ -54,7 +54,7 @@ The README is available in **Español**, **English**, and **Português**.
 - Soporte para Linux, macOS y Windows cuando el sistema expone las métricas.
 - En macOS, la utilización de GPU usa `ioreg` y las temperaturas usan el helper de Stats si está instalado; si cualquiera de ellos falta, esa métrica queda como no disponible sin interrumpir el plugin. En Intel se conserva el fallback de GPU discreta de `systeminformation`.
 - En Windows, la temperatura de CPU requiere LibreHardwareMonitor ejecutándose como administrador con **Remote Web Server** activo en `http://127.0.0.1:8085`.
-- En Windows, la velocidad de red usa una llamada nativa `GetIfTable2` de `iphlpapi.dll` mediante Koffi; la ruta PowerShell queda como fallback acotado si la API nativa no está disponible.
+- En Windows, la velocidad de red usa una llamada nativa `GetIfTable2` de `iphlpapi.dll` mediante Koffi; bajo Bun se reutiliza un helper Node persistente y la ruta PowerShell queda como fallback acotado si el helper o la API nativa no están disponibles.
 - La agregación nativa incluye interfaces de hardware activas, excluye interfaces de filtro, loopback y túnel, y suma sus contadores `InOctets`/`OutOctets`.
 - Las lecturas opcionales de Windows se hacen bajo demanda, con timeout y caché; no hay timers globales de PowerShell.
 - La detección de Nerd Font en Linux/macOS está limitada a rutas conocidas, 2 niveles de profundidad y 256 entradas por directorio; una ruta ausente o inaccesible usa Unicode. Windows no escanea fuentes salvo con `OPENCODE_MONITOR_NERD_FONT=1`.
@@ -165,7 +165,7 @@ npm run build
 - Native CPU percentages are deltas between consecutive samples; the first sample is intentionally unavailable. Counter resets, malformed data, and API failures fall back safely. Apple Silicon retains unified-memory semantics and does not treat system RAM as discrete VRAM.
 - On macOS, GPU utilization uses `ioreg` and temperatures use the Stats helper when installed; missing helpers leave only that metric unavailable without interrupting the plugin. Intel retains the discrete-GPU `systeminformation` fallback.
 - On Windows, CPU temperature requires LibreHardwareMonitor running as administrator with **Remote Web Server** enabled at `http://127.0.0.1:8085`.
-- On Windows, network speed uses one native `GetIfTable2` call from `iphlpapi.dll` through Koffi; the PowerShell path remains only as a bounded fallback when the native API cannot load.
+- On Windows, network speed uses one native `GetIfTable2` call from `iphlpapi.dll` through Koffi; under Bun it reuses a persistent Node helper, with PowerShell retained as a bounded fallback when the helper or native API cannot load.
 - Native aggregation includes active hardware interfaces, excludes filter, loopback, and tunnel interfaces, and sums their `InOctets`/`OutOctets` counters.
 - Optional Windows reads are on demand, timeout-bounded, and cached; no global PowerShell timers are used.
 - Linux/macOS Nerd Font detection is limited to known paths, two directory levels, and 256 entries per directory; missing or inaccessible paths safely fall back to Unicode. Windows does not scan fonts unless `OPENCODE_MONITOR_NERD_FONT=1` is set.

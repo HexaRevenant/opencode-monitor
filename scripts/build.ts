@@ -1,7 +1,7 @@
 import solidPlugin from "@opentui/solid/bun-plugin"
 
 const result = await Bun.build({
-  entrypoints: ["src/tui.tsx", "scripts/install-hack-font.ts"],
+  entrypoints: ["src/tui.tsx", "src/windows-metrics-helper.ts", "scripts/install-hack-font.ts"],
   outdir: "dist",
   target: "node",
   format: "esm",

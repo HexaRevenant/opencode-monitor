@@ -20,6 +20,7 @@ import {
 } from "../src/metrics.js"
 import { decodeNativeIfRow, isWindowsNetworkReaderAvailable, mapWindowsNetworkRows, networkRate, readWithFallback } from "../src/windows-network.js"
 import { cpuPercentFromCounters, isNativeReaderAvailable, mapMemoryBytes, parseLinuxCpuCounters, parseLinuxMemoryInfo } from "../src/native-metrics.js"
+import { parseWindowsMetricsResponse, serializeWindowsMetricsResponse } from "../src/windows-metrics-helper.js"
 
 describe("native CPU and RAM parsing", () => {
   it("only enables the native reader for supported Node runtimes", () => {
@@ -48,6 +49,13 @@ describe("native CPU and RAM parsing", () => {
 })
 
 describe("Windows metric parsing", () => {
+  it("serializes and parses bigint helper responses as decimal strings", () => {
+    const line = serializeWindowsMetricsResponse({ rx: 2n ** 54n, tx: 9n })
+    assert.equal(line, '{"ok":true,"rx":"18014398509481984","tx":"9"}')
+    assert.deepEqual(parseWindowsMetricsResponse(line), { rx: 2n ** 54n, tx: 9n })
+    assert.throws(() => parseWindowsMetricsResponse('{"ok":false,"error":"unavailable"}'), /unavailable/)
+  })
+
   it("disables the native network reader under Bun", () => {
     assert.equal(isWindowsNetworkReaderAvailable(undefined), true)
     assert.equal(isWindowsNetworkReaderAvailable("1.3.14"), false)
