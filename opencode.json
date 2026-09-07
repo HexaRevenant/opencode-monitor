@@ -1,5 +1,4 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "subagent_depth": 6,
-  "plugin": ["opencode-system-metrics-tui@0.1.21"]
+  "subagent_depth": 6
 }
