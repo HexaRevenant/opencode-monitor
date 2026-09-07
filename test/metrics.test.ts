@@ -17,7 +17,7 @@ import {
   withTimeout,
   type CachedMetric,
 } from "../src/metrics.js"
-import { mapWindowsNetworkRows, networkRate, readWithFallback } from "../src/windows-network.js"
+import { decodeNativeIfRow, mapWindowsNetworkRows, networkRate, readWithFallback } from "../src/windows-network.js"
 import { cpuPercentFromCounters, isNativeReaderAvailable, mapMemoryBytes, parseLinuxCpuCounters, parseLinuxMemoryInfo } from "../src/native-metrics.js"
 
 describe("native CPU and RAM parsing", () => {
@@ -47,6 +47,28 @@ describe("native CPU and RAM parsing", () => {
 })
 
 describe("Windows metric parsing", () => {
+  it("decodes only primitive MIB_IF_ROW2 fields", () => {
+    const offsets = new Map([
+      ["InterfaceAndOperStatusFlags", 10], ["OperStatus", 20], ["Type", 30],
+      ["AccessType", 40], ["InOctets", 50], ["OutOctets", 60],
+    ])
+    const values = new Map<number, bigint | number>([[110, 1], [120, 1], [130, 6], [140, 2], [150, 2n ** 54n], [160, 9n]])
+    const calls: string[] = []
+    const fakeKoffi = {
+      offsetof: (_row: unknown, field: string) => offsets.get(field)!,
+      decode: (_table: unknown, address: number, type: string) => {
+        calls.push(type)
+        return values.get(address)
+      },
+    } as any
+
+    assert.deepEqual(decodeNativeIfRow(fakeKoffi, "MIB_IF_ROW2" as any, "table", 100), {
+      InterfaceAndOperStatusFlags: 1, OperStatus: 1, Type: 6, AccessType: 2,
+      InOctets: 2n ** 54n, OutOctets: 9n,
+    })
+    assert.deepEqual(calls, ["uint8", "uint32", "uint32", "uint32", "uint64", "uint64"])
+  })
+
   it("keeps Windows operation timeouts bounded and ordered", () => {
     assert.equal(DEFAULT_METRIC_TIMEOUT_MS, 1_500)
     assert.equal(WINDOWS_MEMORY_TIMEOUT_MS, 5_000)

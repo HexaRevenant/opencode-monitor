@@ -56,6 +56,18 @@ export function networkRate(current: NativeNetworkCounters, previous: NativeNetw
   return { rx: Number(rx) / seconds, tx: Number(tx) / seconds }
 }
 
+export function decodeNativeIfRow(koffi: Koffi, row: Parameters<Koffi["offsetof"]>[0], table: any, offset: number): NativeIfRow {
+  const decode = (field: string, type: string) => koffi.decode(table, offset + koffi.offsetof(row, field), type)
+  return {
+    InterfaceAndOperStatusFlags: decode("InterfaceAndOperStatusFlags", "uint8"),
+    OperStatus: decode("OperStatus", "uint32"),
+    Type: decode("Type", "uint32"),
+    AccessType: decode("AccessType", "uint32"),
+    InOctets: decode("InOctets", "uint64"),
+    OutOctets: decode("OutOctets", "uint64"),
+  }
+}
+
 function defineNativeReader(koffi: Koffi): () => NativeIfRow[] {
   const guid = koffi.struct("MIB_GUID", {
     Data1: "uint32",
@@ -121,7 +133,8 @@ function defineNativeReader(koffi: Koffi): () => NativeIfRow[] {
     try {
       const count = Number(koffi.decode(table, 0, "uint32"))
       if (!Number.isSafeInteger(count) || count < 0 || count > 4096) throw new Error(`Invalid interface count: ${count}`)
-      return Array.from({ length: count }, (_, index) => koffi.decode(table, ROWS_OFFSET + index * koffi.sizeof(row), row) as NativeIfRow)
+      return Array.from({ length: count }, (_, index) =>
+        decodeNativeIfRow(koffi, row, table, ROWS_OFFSET + index * koffi.sizeof(row)))
     } finally {
       freeMibTable(table)
     }
