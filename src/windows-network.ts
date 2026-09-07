@@ -22,6 +22,10 @@ const ROWS_OFFSET = 8 // MIB_IF_TABLE2 has ULONG NumEntries followed by aligned 
 
 let nativeReader: Promise<() => NativeIfRow[]> | undefined
 
+export function isWindowsNetworkReaderAvailable(bunVersion: string | undefined): boolean {
+  return bunVersion === undefined
+}
+
 function toUint64(value: bigint | number | undefined): bigint {
   if (typeof value === "bigint" && value >= 0n) return value
   if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return BigInt(value)
@@ -147,6 +151,11 @@ async function loadNativeReader(): Promise<() => NativeIfRow[]> {
 }
 
 export async function readWindowsNetworkCounters(): Promise<NativeNetworkCounters> {
+  const bunVersion = (process.versions as NodeJS.ProcessVersions & { bun?: string }).bun
+  if (!isWindowsNetworkReaderAvailable(bunVersion)) {
+    throw new Error("Native Windows network metrics are unavailable on Bun")
+  }
+
   nativeReader ??= loadNativeReader()
   return mapWindowsNetworkRows((await nativeReader)())
 }

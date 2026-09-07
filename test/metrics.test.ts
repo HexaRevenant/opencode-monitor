@@ -17,7 +17,7 @@ import {
   withTimeout,
   type CachedMetric,
 } from "../src/metrics.js"
-import { decodeNativeIfRow, mapWindowsNetworkRows, networkRate, readWithFallback } from "../src/windows-network.js"
+import { decodeNativeIfRow, isWindowsNetworkReaderAvailable, mapWindowsNetworkRows, networkRate, readWithFallback } from "../src/windows-network.js"
 import { cpuPercentFromCounters, isNativeReaderAvailable, mapMemoryBytes, parseLinuxCpuCounters, parseLinuxMemoryInfo } from "../src/native-metrics.js"
 
 describe("native CPU and RAM parsing", () => {
@@ -47,6 +47,11 @@ describe("native CPU and RAM parsing", () => {
 })
 
 describe("Windows metric parsing", () => {
+  it("disables the native network reader under Bun", () => {
+    assert.equal(isWindowsNetworkReaderAvailable(undefined), true)
+    assert.equal(isWindowsNetworkReaderAvailable("1.3.14"), false)
+  })
+
   it("decodes only primitive MIB_IF_ROW2 fields", () => {
     const offsets = new Map([
       ["InterfaceAndOperStatusFlags", 10], ["OperStatus", 20], ["Type", 30],
