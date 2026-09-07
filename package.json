@@ -25,7 +25,8 @@
     "typecheck": "tsc --noEmit",
     "install-font": "node dist/install-hack-font.js",
     "verify-installation": "tsx scripts/plugin-installation.ts",
-    "install-plugin": "tsx scripts/install-plugin.ts"
+    "install-plugin": "tsx scripts/install-plugin.ts",
+    "uninstall-plugin": "tsx scripts/uninstall-plugin.ts"
   },
   "engines": {
     "node": ">=18"

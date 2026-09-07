@@ -17,6 +17,19 @@ npm run verify-installation
 
 Restart OpenCode after installation. This installs the plugin globally for all projects. The OpenCode cache directory name, including `@latest`, is only a package-specifier label and does not prove the package version. Verification reads the nested package's own `package.json` and checks `dist/tui.js`; it reports stale entries without deleting anything.
 
+### Uninstall safely
+
+This project provides a safe helper; OpenCode does **not** provide a native uninstall command. It defaults to both observed global configuration roots (`~/.config/opencode` and `~/.opencode`), shows a plan, and requires `--yes` before changing anything. It removes only this plugin from OpenCode plugin arrays and verified cache entries. It never removes OpenCode, Node, Bun, shared dependencies, or repository files.
+
+```powershell
+npm run uninstall-plugin -- --dry-run
+npm run uninstall-plugin -- --yes
+npm run uninstall-plugin -- --purge-cache --yes  # also remove all verified stale versions
+npm run uninstall-plugin -- --local              # current project's .opencode config
+```
+
+Use `--dry-run` first. Without `--yes`, no changes are made. An unversioned package entry removes all verified cache entries for this package; `--purge-cache` explicitly removes all verified entries even when no package entry is configured.
+
 OpenCode TUI plugin that adds live CPU, RAM, GPU, GPU VRAM, temperature, and network metrics to the `sidebar_content` slot.
 
 The README is available in **Español**, **English**, and **Português**.
@@ -62,6 +75,19 @@ opencode
 ```
 
 `npm run install-font` ejecuta el instalador compilado incluido en `dist/`, instala **Hack Nerd Font** únicamente para el usuario actual, no se ejecuta automáticamente durante `npm install` y solicita confirmación antes de descargar la fuente oficial.
+
+### Desinstalación segura
+
+Este proyecto incluye un asistente seguro; OpenCode **no** tiene un comando nativo de desinstalación. Por defecto actúa sobre ambas raíces globales observadas (`~/.config/opencode` y `~/.opencode`), muestra un informe y requiere `--yes` antes de cambiar archivos. Solo elimina este paquete de las listas de plugins y sus entradas de caché verificadas.
+
+```bash
+npm run uninstall-plugin -- --dry-run
+npm run uninstall-plugin -- --yes
+npm run uninstall-plugin -- --purge-cache --yes  # también elimina versiones antiguas verificadas
+npm run uninstall-plugin -- --local              # configuración .opencode del proyecto actual
+```
+
+Usa primero `--dry-run`. Sin `--yes` no se realizan cambios. Una entrada de paquete sin versión elimina todas las entradas de caché verificadas de este paquete; `--purge-cache` las elimina explícitamente.
 
 Comandos adicionales:
 
@@ -161,6 +187,19 @@ opencode
 
 `npm run install-font` runs the compiled installer included in `dist/`, installs **Hack Nerd Font** for the current user only, is not executed automatically by `npm install`, and asks for confirmation before downloading the official font.
 
+### Safe uninstall
+
+This project provides a safe helper; OpenCode does **not** provide a native uninstall command. It targets both observed global configuration roots (`~/.config/opencode` and `~/.opencode`) by default, prints a report, and requires `--yes` before changing anything. It removes only this package from plugin lists and its verified cache entries.
+
+```bash
+npm run uninstall-plugin -- --dry-run
+npm run uninstall-plugin -- --yes
+npm run uninstall-plugin -- --purge-cache --yes  # also remove all verified stale versions
+npm run uninstall-plugin -- --local              # current project's .opencode config
+```
+
+Run `--dry-run` first. Without `--yes`, no changes are made. An unversioned package entry removes all verified cache entries for this package; `--purge-cache` explicitly removes all verified entries. Neither mode removes OpenCode, Node, Bun, shared dependencies, or repository files.
+
 Extra commands:
 
 ```bash
@@ -255,6 +294,19 @@ opencode
 ```
 
 `npm run install-font` executa o instalador compilado incluído em `dist/`, instala a **Hack Nerd Font** somente para o usuário atual, não é executado automaticamente durante `npm install` e pede confirmação antes de baixar a fonte oficial.
+
+### Desinstalação segura
+
+Este projeto inclui um assistente seguro; o OpenCode **não** oferece um comando nativo de desinstalação. Por padrão, ele usa ambas as raízes globais observadas (`~/.config/opencode` e `~/.opencode`), mostra um relatório e exige `--yes` antes de alterar arquivos. Remove apenas este pacote das listas de plugins e suas entradas de cache verificadas.
+
+```bash
+npm run uninstall-plugin -- --dry-run
+npm run uninstall-plugin -- --yes
+npm run uninstall-plugin -- --purge-cache --yes  # também remove versões antigas verificadas
+npm run uninstall-plugin -- --local              # configuração .opencode do projeto atual
+```
+
+Execute primeiro com `--dry-run`. Sem `--yes`, nenhuma alteração é feita. Uma entrada de pacote sem versão remove todas as entradas de cache verificadas deste pacote; `--purge-cache` remove explicitamente todas as entradas verificadas.
 
 Comandos adicionais:
 
