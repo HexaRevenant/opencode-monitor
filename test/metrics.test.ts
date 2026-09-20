@@ -7,6 +7,8 @@ import {
   DEFAULT_METRIC_TIMEOUT_MS,
   detectMacHardwareArchitecture,
   gpuMemoryLabel,
+  isNvidiaSmiPresent,
+  mergeGraphicsSources,
   parseMacGpuUtilization,
   parseMacStatsTemperature,
   parseMonitorTemperature,
@@ -20,6 +22,7 @@ import {
   WINDOWS_NETWORK_PROCESS_TIMEOUT_MS,
   withTimeout,
   type CachedMetric,
+  type GpuSourceInfo,
 } from "../src/metrics.js"
 import { decodeNativeIfRow, isWindowsNetworkReaderAvailable, mapWindowsNetworkRows, networkRate, readWithFallback } from "../src/windows-network.js"
 import { cpuPercentFromCounters, isNativeReaderAvailable, mapMemoryBytes, parseAmdSysfsCardFiles, parseLinuxCpuCounters, parseLinuxMemoryInfo, readAmdSysfsGpu } from "../src/native-metrics.js"
@@ -186,6 +189,84 @@ describe("AMD sysfs GPU reader", () => {
     } finally {
       await rm(root, { recursive: true, force: true })
     }
+  })
+})
+
+describe("GPU source probe and merge", () => {
+  it("reports nvidia-smi present when the fixed-name file exists and never executes it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "gpu-probe-"))
+    try {
+      // The stub is non-executable and would throw if spawned: only a
+      // stat/access presence probe can report it present without running it.
+      await writeFile(join(dir, "nvidia-smi"), "throw new Error('probe must never execute')", { mode: 0o600 })
+      assert.equal(isNvidiaSmiPresent([dir], "linux"), true)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("misses absent files and checks the .exe fixed name on win32", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "gpu-probe-"))
+    const empty = await mkdtemp(join(tmpdir(), "gpu-probe-"))
+    try {
+      assert.equal(isNvidiaSmiPresent([empty], "linux"), false)
+      assert.equal(isNvidiaSmiPresent([empty], "win32"), false)
+      await writeFile(join(dir, "nvidia-smi"), "throw new Error('probe must never execute')", { mode: 0o600 })
+      assert.equal(isNvidiaSmiPresent([dir], "linux"), true)
+      assert.equal(isNvidiaSmiPresent([dir], "win32"), false)
+      await writeFile(join(dir, "nvidia-smi.exe"), "throw new Error('probe must never execute')", { mode: 0o600 })
+      assert.equal(isNvidiaSmiPresent([dir], "win32"), true)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+      await rm(empty, { recursive: true, force: true })
+    }
+  })
+
+  it("attributes a live si controller to nvidia-smi on linux and win32", () => {
+    const si = { controllers: [{ utilizationGpu: 50, temperatureGpu: 60, memoryUsed: 1024, memoryTotal: 2048 }] }
+    assert.equal(mergeGraphicsSources(si, [], true, "linux").gpuSource, "nvidia-smi")
+    assert.equal(mergeGraphicsSources(si, [], true, "win32").gpuSource, "nvidia-smi")
+  })
+
+  it("attributes a live sysfs card to amd-sysfs even when the probe misses", () => {
+    const sysfs = [{
+      gpuPercent: 42,
+      gpuTemperatureCelsius: 61,
+      gpuMemoryUsedBytes: 2147483648,
+      gpuMemoryTotalBytes: 8589934592,
+    }]
+    assert.equal(mergeGraphicsSources({ controllers: [] }, sysfs, false, "linux").gpuSource, "amd-sysfs")
+  })
+
+  it("reports nvidia-smi-not-found when nothing is live and the probe misses", () => {
+    assert.equal(mergeGraphicsSources({ controllers: [] }, [], false, "linux").gpuSource, "nvidia-smi-not-found")
+  })
+
+  it("reports empty-controllers when nothing is live but nvidia-smi exists", () => {
+    assert.equal(mergeGraphicsSources({ controllers: [] }, [], true, "linux").gpuSource, "empty-controllers")
+  })
+
+  it("never claims nvidia-smi on darwin even with a live si controller", () => {
+    const si = { controllers: [{ utilizationGpu: 50, temperatureGpu: 60, memoryUsed: 1024, memoryTotal: 2048 }] }
+    assert.equal(mergeGraphicsSources(si, [], true, "darwin").gpuSource, "empty-controllers")
+  })
+
+  it("appends sysfs cards as integer-MiB controllers after the si ones", () => {
+    const merged = mergeGraphicsSources(
+      { controllers: [{ utilizationGpu: 10, temperatureGpu: 30, memoryUsed: 100, memoryTotal: 200 }] },
+      [{
+        gpuPercent: 42,
+        gpuTemperatureCelsius: 61,
+        gpuMemoryUsedBytes: 2147483648,
+        gpuMemoryTotalBytes: 8589934592,
+      }],
+      true,
+      "linux",
+    )
+    assert.deepEqual(merged.controllers, [
+      { utilizationGpu: 10, temperatureGpu: 30, memoryUsed: 100, memoryTotal: 200 },
+      { utilizationGpu: 42, temperatureGpu: 61, memoryUsed: 2048, memoryTotal: 8192 },
+    ])
   })
 })
 
@@ -392,6 +473,37 @@ describe("metric cache and GPU fallback", () => {
 
   it("returns safe empty GPU data for an unexpected structure", () => {
     assert.deepEqual(selectGpuMetrics({ controllers: undefined as never }), {
+      gpuPercent: null, gpuTemperatureCelsius: null, gpuMemoryUsedBytes: null,
+      gpuMemoryTotalBytes: null, gpuMemoryPercent: null,
+    })
+  })
+
+  it("shows the live sysfs card when a dead si controller is the only si input on linux", () => {
+    const merged = mergeGraphicsSources(
+      { controllers: [{ utilizationGpu: null, temperatureGpu: null, memoryUsed: null, memoryTotal: null }] },
+      [{
+        gpuPercent: 42,
+        gpuTemperatureCelsius: 61,
+        gpuMemoryUsedBytes: 2147483648,
+        gpuMemoryTotalBytes: 8589934592,
+      }],
+      true,
+      "linux",
+    )
+    assert.equal(merged.gpuSource, "amd-sysfs")
+    assert.deepEqual(selectGpuMetrics(merged), {
+      gpuPercent: 42,
+      gpuTemperatureCelsius: 61,
+      gpuMemoryUsedBytes: 2147483648,
+      gpuMemoryTotalBytes: 8589934592,
+      gpuMemoryPercent: 25,
+    })
+  })
+
+  it("returns all-null GPU fields when no merged controller qualifies", () => {
+    const merged = mergeGraphicsSources({ controllers: [] }, [], false, "linux")
+    assert.equal(merged.gpuSource, "nvidia-smi-not-found")
+    assert.deepEqual(selectGpuMetrics(merged), {
       gpuPercent: null, gpuTemperatureCelsius: null, gpuMemoryUsedBytes: null,
       gpuMemoryTotalBytes: null, gpuMemoryPercent: null,
     })

@@ -24,6 +24,7 @@ const initialMetrics: SystemMetrics = {
   gpuMemoryTotalBytes: null,
   gpuMemoryPercent: null,
   gpuMemoryIsUnified: null,
+  gpuSource: null,
   downloadBytesPerSecond: null,
   uploadBytesPerSecond: null,
 }
