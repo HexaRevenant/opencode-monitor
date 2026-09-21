@@ -1,10 +1,12 @@
 import { execFile } from "node:child_process"
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
+import { statSync } from "node:fs"
+import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 import si from "systeminformation"
 import { networkRate, readWithFallback, type NativeNetworkCounters } from "./windows-network.js"
-import { readNativeMetrics } from "./native-metrics.js"
+import { readAmdSysfsGpu, readNativeMetrics, type AmdSysfsGpuSample } from "./native-metrics.js"
 import { parseWindowsMetricsResponse } from "./windows-metrics-helper.js"
 
 const execFileAsync = promisify(execFile)
@@ -27,6 +29,7 @@ export interface SystemMetrics {
   gpuMemoryTotalBytes: number | null
   gpuMemoryPercent: number | null
   gpuMemoryIsUnified: boolean | null
+  gpuSource: GpuSourceInfo | null
   downloadBytesPerSecond: number | null
   uploadBytesPerSecond: number | null
 }
@@ -244,6 +247,7 @@ const unavailable: SystemMetrics = {
   gpuMemoryTotalBytes: null,
   gpuMemoryPercent: null,
   gpuMemoryIsUnified: null,
+  gpuSource: null,
   downloadBytesPerSecond: null,
   uploadBytesPerSecond: null,
 }
@@ -255,6 +259,9 @@ export type GpuMetric = {
   gpuMemoryTotalBytes: number | null
   gpuMemoryPercent: number | null
 }
+
+export type GpuSourceInfo = "nvidia-smi" | "amd-sysfs" | "nvidia-smi-not-found" | "empty-controllers"
+// Closed union — extending it requires a spec change (gpu-metrics spec constraint #2).
 
 function finite(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null
@@ -346,6 +353,90 @@ export function selectGpuMetrics(graphics: { controllers: Array<{
   return result
 }
 
+export function isNvidiaSmiPresent(
+  pathList: readonly string[] = (process.env.PATH ?? "").split(process.platform === "win32" ? ";" : ":"),
+  platform: NodeJS.Platform = process.platform,
+): boolean {
+  // Presence probe only: fixed-name stat/access, never executes. A stub file
+  // that would throw when spawned is still reported present, proving no
+  // subprocess ever runs (covered by the probe tests).
+  const name = platform === "win32" ? "nvidia-smi.exe" : "nvidia-smi"
+  for (const directory of pathList) {
+    if (directory.trim().length === 0) continue
+    try {
+      statSync(join(directory, name))
+      return true
+    } catch {
+      // Not in this directory — keep scanning the rest of PATH.
+    }
+  }
+  return false
+}
+
+function isSysfsCardLive(card: AmdSysfsGpuSample): boolean {
+  return card.gpuPercent !== null ||
+    card.gpuTemperatureCelsius !== null ||
+    card.gpuMemoryUsedBytes !== null ||
+    card.gpuMemoryTotalBytes !== null
+}
+
+function isSiControllerLive(controller: {
+  utilizationGpu?: unknown
+  temperatureGpu?: unknown
+  memoryTotal?: unknown
+  memoryFree?: unknown
+  memoryUsed?: unknown
+}): boolean {
+  const utilization = finite(controller.utilizationGpu)
+  const temperature = finite(controller.temperatureGpu)
+  const memoryTotal = finite(controller.memoryTotal)
+  const memoryFree = finite(controller.memoryFree)
+  const memoryUsed = finite(controller.memoryUsed) ??
+    (memoryTotal !== null && memoryFree !== null ? Math.max(0, memoryTotal - memoryFree) : null)
+  const hasMemory = memoryUsed !== null && memoryTotal !== null && memoryTotal > 0
+  return utilization !== null || temperature !== null || hasMemory
+}
+
+export function mergeGraphicsSources(
+  siGraphics: { controllers?: Array<{
+    utilizationGpu?: unknown
+    temperatureGpu?: unknown
+    memoryTotal?: unknown
+    memoryFree?: unknown
+    memoryUsed?: unknown
+  }> } | undefined,
+  sysfsCards: AmdSysfsGpuSample[] | undefined,
+  nvidiaSmiPresent: boolean,
+  platform: NodeJS.Platform = process.platform,
+): { controllers: Array<{
+  utilizationGpu?: unknown
+  temperatureGpu?: unknown
+  memoryTotal?: unknown
+  memoryFree?: unknown
+  memoryUsed?: unknown
+}>; gpuSource: GpuSourceInfo } {
+  const sysfsLive = (sysfsCards ?? []).some(isSysfsCardLive)
+  const siLive = (siGraphics?.controllers ?? []).some(isSiControllerLive)
+
+  let gpuSource: GpuSourceInfo
+  if (sysfsLive) gpuSource = "amd-sysfs"
+  else if (platform === "darwin") gpuSource = "empty-controllers"
+  else if (siLive) gpuSource = "nvidia-smi"
+  else if (!nvidiaSmiPresent) gpuSource = "nvidia-smi-not-found"
+  else gpuSource = "empty-controllers"
+
+  const controllers = [...(siGraphics?.controllers ?? [])]
+  for (const card of sysfsCards ?? []) {
+    controllers.push({
+      utilizationGpu: card.gpuPercent,
+      temperatureGpu: card.gpuTemperatureCelsius,
+      memoryUsed: card.gpuMemoryUsedBytes === null ? null : Math.round(card.gpuMemoryUsedBytes / 1024 ** 2),
+      memoryTotal: card.gpuMemoryTotalBytes === null ? null : Math.round(card.gpuMemoryTotalBytes / 1024 ** 2),
+    })
+  }
+  return { controllers, gpuSource }
+}
+
 export function readCachedMetric<T>(
   state: CachedMetric<T>,
   reader: () => Promise<T>,
@@ -393,10 +484,27 @@ const cachedLibreHardwareMonitorTemperature: CachedMetric<number> = {
   inFlight: undefined,
 }
 
-const cachedGraphics: CachedMetric<Awaited<ReturnType<typeof si.graphics>>> = {
+const cachedGraphics: CachedMetric<ReturnType<typeof mergeGraphicsSources>> = {
   value: undefined,
   lastAttemptAt: 0,
   inFlight: undefined,
+}
+
+// Composed reader: on linux si.graphics() and the amdgpu sysfs cards run
+// together inside the existing readCachedMetric(..., 2_500) timeout, so a hung
+// sysfs read cannot block the panel past the 2.5s bound. Other platforms pass
+// an empty sysfs list and still get the gpuSource attribution.
+async function readGraphicsSources(): Promise<ReturnType<typeof mergeGraphicsSources>> {
+  const [siGraphics, sysfsCards] = await Promise.allSettled([
+    si.graphics(),
+    process.platform === "linux" ? readAmdSysfsGpu() : Promise.resolve([]),
+  ])
+  return mergeGraphicsSources(
+    siGraphics.status === "fulfilled" ? siGraphics.value : undefined,
+    sysfsCards.status === "fulfilled" ? sysfsCards.value : undefined,
+    isNvidiaSmiPresent(),
+    process.platform,
+  )
 }
 
 const cachedMacMetrics: CachedMetric<MacMetrics> = {
@@ -505,7 +613,7 @@ export async function readMetrics(): Promise<SystemMetrics> {
 
   const [temperature, graphics, network, mac] = await Promise.allSettled([
     readCachedMetric(cachedCpuTemperature, isWindows ? readWindowsCpuTemperature : () => si.cpuTemperature(), TEMPERATURE_CACHE_MS, Date.now(), TEMPERATURE_CACHE_MS, 2_500),
-    readCachedMetric(cachedGraphics, () => si.graphics(), SLOW_METRIC_CACHE_MS, Date.now(), SLOW_METRIC_CACHE_MS, 2_500),
+    readCachedMetric(cachedGraphics, readGraphicsSources, SLOW_METRIC_CACHE_MS, Date.now(), SLOW_METRIC_CACHE_MS, 2_500),
     networkMetric,
     isMac
       ? readCachedMetric(cachedMacMetrics, () => readMacMetrics(), SLOW_METRIC_CACHE_MS, Date.now(), OPTIONAL_SOURCE_BACKOFF_MS, MAC_METRIC_TIMEOUT_MS)
@@ -572,6 +680,7 @@ export async function readMetrics(): Promise<SystemMetrics> {
     gpuMemoryTotalBytes: gpu.gpuMemoryTotalBytes,
     gpuMemoryPercent: gpu.gpuMemoryPercent,
     gpuMemoryIsUnified: isAppleSilicon ? true : isMac && architecture === "x86_64" ? false : null,
+    gpuSource: graphics.status === "fulfilled" && graphics.value !== undefined ? graphics.value.gpuSource : null,
     downloadBytesPerSecond,
     uploadBytesPerSecond,
   }
