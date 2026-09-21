@@ -1,5 +1,8 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import {
   DEFAULT_METRIC_TIMEOUT_MS,
   detectMacHardwareArchitecture,
@@ -19,7 +22,7 @@ import {
   type CachedMetric,
 } from "../src/metrics.js"
 import { decodeNativeIfRow, isWindowsNetworkReaderAvailable, mapWindowsNetworkRows, networkRate, readWithFallback } from "../src/windows-network.js"
-import { cpuPercentFromCounters, isNativeReaderAvailable, mapMemoryBytes, parseLinuxCpuCounters, parseLinuxMemoryInfo } from "../src/native-metrics.js"
+import { cpuPercentFromCounters, isNativeReaderAvailable, mapMemoryBytes, parseAmdSysfsCardFiles, parseLinuxCpuCounters, parseLinuxMemoryInfo, readAmdSysfsGpu } from "../src/native-metrics.js"
 import { parseWindowsMetricsResponse, serializeWindowsMetricsResponse } from "../src/windows-metrics-helper.js"
 
 describe("native CPU and RAM parsing", () => {
@@ -45,6 +48,144 @@ describe("native CPU and RAM parsing", () => {
     assert.deepEqual(parseLinuxMemoryInfo("MemTotal: 1000 kB\nMemFree: 100 kB\nBuffers: 50 kB\nCached: 25 kB"), { totalBytes: 1024000, availableBytes: 179200 })
     assert.equal(parseLinuxMemoryInfo("MemTotal: malformed"), undefined)
     assert.equal(mapMemoryBytes(Number.MAX_SAFE_INTEGER + 1, 0), undefined)
+  })
+})
+
+describe("AMD sysfs GPU parsing", () => {
+  it("parses a full card and prefers the amdgpu hwmon dir even when it comes second", () => {
+    assert.deepEqual(parseAmdSysfsCardFiles({
+      busyPercent: "42",
+      vramTotal: "8589934592",
+      vramUsed: "2147483648",
+      hwmonNames: ["k10temp", "amdgpu"],
+      hwmonTemps: ["45000", "61000"],
+    }), {
+      gpuPercent: 42,
+      gpuTemperatureCelsius: 61,
+      gpuMemoryUsedBytes: 2147483648,
+      gpuMemoryTotalBytes: 8589934592,
+    })
+  })
+
+  it("nulls each field independently for empty or partial bags", () => {
+    assert.deepEqual(parseAmdSysfsCardFiles({}), {
+      gpuPercent: null,
+      gpuTemperatureCelsius: null,
+      gpuMemoryUsedBytes: null,
+      gpuMemoryTotalBytes: null,
+    })
+    assert.deepEqual(parseAmdSysfsCardFiles({
+      busyPercent: "42",
+      hwmonNames: ["amdgpu"],
+      hwmonTemps: ["61000"],
+    }), {
+      gpuPercent: 42,
+      gpuTemperatureCelsius: 61,
+      gpuMemoryUsedBytes: null,
+      gpuMemoryTotalBytes: null,
+    })
+  })
+
+  it("rejects malformed or out-of-range values per field", () => {
+    assert.equal(parseAmdSysfsCardFiles({ busyPercent: "abc" }).gpuPercent, null)
+    assert.equal(parseAmdSysfsCardFiles({ busyPercent: "150" }).gpuPercent, null)
+    assert.equal(parseAmdSysfsCardFiles({ vramTotal: "not-a-number" }).gpuMemoryTotalBytes, null)
+  })
+
+  it("keeps memory null when the total is missing and percent null when total is non-positive", () => {
+    assert.equal(parseAmdSysfsCardFiles({ busyPercent: "42" }).gpuMemoryTotalBytes, null)
+    assert.deepEqual(parseAmdSysfsCardFiles({ busyPercent: "42", vramTotal: "0" }), {
+      gpuPercent: null,
+      gpuTemperatureCelsius: null,
+      gpuMemoryUsedBytes: null,
+      gpuMemoryTotalBytes: null,
+    })
+  })
+})
+
+describe("AMD sysfs GPU reader", () => {
+  async function makeCardTree(entries: Array<[string, string]>): Promise<string> {
+    const root = await mkdtemp(join(tmpdir(), "amd-sysfs-"))
+    for (const [relative, content] of entries) {
+      const fullPath = join(root, relative)
+      await mkdir(join(fullPath, ".."), { recursive: true })
+      await writeFile(fullPath, content)
+    }
+    return root
+  }
+
+  it("reads a full card through the injected root", async () => {
+    const root = await makeCardTree([
+      ["card0/device/gpu_busy_percent", "42"],
+      ["card0/device/mem_info_vram_total", "8589934592"],
+      ["card0/device/mem_info_vram_used", "2147483648"],
+      ["card0/device/hwmon/hwmon0/name", "amdgpu"],
+      ["card0/device/hwmon/hwmon0/temp1_input", "61000"],
+    ])
+    try {
+      assert.deepEqual(await readAmdSysfsGpu(root), [{
+        gpuPercent: 42,
+        gpuTemperatureCelsius: 61,
+        gpuMemoryUsedBytes: 2147483648,
+        gpuMemoryTotalBytes: 8589934592,
+      }])
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it("returns an empty list for a missing root without throwing", async () => {
+    assert.deepEqual(await readAmdSysfsGpu(join(tmpdir(), "amd-sysfs-missing")), [])
+  })
+
+  it("tolerates a partial card with only utilization", async () => {
+    const root = await makeCardTree([["card0/device/gpu_busy_percent", "42"]])
+    try {
+      assert.deepEqual(await readAmdSysfsGpu(root), [{
+        gpuPercent: 42,
+        gpuTemperatureCelsius: null,
+        gpuMemoryUsedBytes: null,
+        gpuMemoryTotalBytes: null,
+      }])
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it("ignores sibling entries that do not match card*", async () => {
+    const root = await makeCardTree([
+      ["controlD64", "x"],
+      ["version", "drm 2"],
+      ["card0/device/gpu_busy_percent", "42"],
+    ])
+    try {
+      assert.deepEqual(await readAmdSysfsGpu(root), [{
+        gpuPercent: 42,
+        gpuTemperatureCelsius: null,
+        gpuMemoryUsedBytes: null,
+        gpuMemoryTotalBytes: null,
+      }])
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it("never synthesizes a vram total from lspci when mem_info files are absent", async () => {
+    const root = await makeCardTree([
+      ["card0/device/gpu_busy_percent", "42"],
+      ["card0/device/hwmon/hwmon0/name", "amdgpu"],
+      ["card0/device/hwmon/hwmon0/temp1_input", "45000"],
+    ])
+    try {
+      assert.deepEqual(await readAmdSysfsGpu(root), [{
+        gpuPercent: 42,
+        gpuTemperatureCelsius: 45,
+        gpuMemoryUsedBytes: null,
+        gpuMemoryTotalBytes: null,
+      }])
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 })
 

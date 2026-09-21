@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises"
+import { readdir, readFile } from "node:fs/promises"
+import { join } from "node:path"
 
 export type NativeMetricSample = {
   cpuPercent: number | undefined
@@ -51,6 +52,106 @@ export function parseLinuxMemoryInfo(meminfo: string): { totalBytes: number; ava
 export function mapMemoryBytes(totalBytes: number, availableBytes: number): Pick<NativeMetricSample, "memoryTotalBytes" | "memoryAvailableBytes"> | undefined {
   if (!Number.isSafeInteger(totalBytes) || !Number.isSafeInteger(availableBytes) || totalBytes <= 0 || availableBytes < 0) return undefined
   return { memoryTotalBytes: totalBytes, memoryAvailableBytes: Math.min(totalBytes, availableBytes) }
+}
+
+export type AmdSysfsGpuSample = {
+  gpuPercent: number | null
+  gpuTemperatureCelsius: number | null
+  gpuMemoryUsedBytes: number | null
+  gpuMemoryTotalBytes: number | null
+}
+
+function parseSysfsInteger(value: string | undefined): number | null {
+  if (value === undefined) return null
+  const trimmed = value.trim()
+  if (!/^\d+$/.test(trimmed)) return null
+  const parsed = Number(trimmed)
+  return Number.isSafeInteger(parsed) ? parsed : null
+}
+
+function parseSysfsPercent(value: string | undefined): number | null {
+  const parsed = parseSysfsInteger(value)
+  return parsed !== null && parsed >= 0 && parsed <= 100 ? parsed : null
+}
+
+function pickHwmonTemperature(names: string[] | undefined, temps: string[] | undefined): number | null {
+  if (names === undefined || temps === undefined) return null
+  const amdgpuIndex = names.findIndex((name) => name.trim() === "amdgpu")
+  if (amdgpuIndex >= 0) {
+    const preferred = parseSysfsInteger(temps[amdgpuIndex] ?? undefined)
+    if (preferred !== null) return preferred / 1000
+  }
+  for (const temp of temps) {
+    const parsed = parseSysfsInteger(temp)
+    if (parsed !== null) return parsed / 1000
+  }
+  return null
+}
+
+export function parseAmdSysfsCardFiles(files: {
+  busyPercent?: string
+  vramTotal?: string
+  vramUsed?: string
+  hwmonNames?: string[]
+  hwmonTemps?: string[]
+}): AmdSysfsGpuSample {
+  const total = parseSysfsInteger(files.vramTotal)
+  // A present but invalid total (non-positive or unreadable) must never be
+  // replaced by an lspci vram estimate: without a valid total the card reports
+  // no memory and no percent. An absent total keeps percent live but nulls memory.
+  const totalVoidsSample = files.vramTotal !== undefined && (total === null || total <= 0)
+  const busyPercent = parseSysfsPercent(files.busyPercent)
+  return {
+    gpuPercent: totalVoidsSample ? null : busyPercent,
+    gpuTemperatureCelsius: pickHwmonTemperature(files.hwmonNames, files.hwmonTemps),
+    gpuMemoryUsedBytes: totalVoidsSample || total === null ? null : parseSysfsInteger(files.vramUsed),
+    gpuMemoryTotalBytes: totalVoidsSample || total === null ? null : total,
+  }
+}
+
+async function readSysfsFile(filePath: string): Promise<string | undefined> {
+  try {
+    return await readFile(filePath, "utf8")
+  } catch {
+    return undefined
+  }
+}
+
+export async function readAmdSysfsGpu(root = "/sys/class/drm"): Promise<AmdSysfsGpuSample[]> {
+  let entries: string[]
+  try {
+    entries = await readdir(root)
+  } catch {
+    return []
+  }
+  const cards = entries.filter((entry) => /^card\d+$/.test(entry)).sort()
+  const samples: AmdSysfsGpuSample[] = []
+  for (const card of cards) {
+    const deviceRoot = join(root, card, "device")
+    const [busyPercent, vramTotal, vramUsed] = await Promise.all([
+      readSysfsFile(join(deviceRoot, "gpu_busy_percent")),
+      readSysfsFile(join(deviceRoot, "mem_info_vram_total")),
+      readSysfsFile(join(deviceRoot, "mem_info_vram_used")),
+    ])
+    const hwmonNames: string[] = []
+    const hwmonTemps: string[] = []
+    try {
+      const hwmonDirs = (await readdir(join(deviceRoot, "hwmon"))).filter((entry) => /^hwmon\d+$/.test(entry)).sort()
+      for (const hwmonDir of hwmonDirs) {
+        const hwmonRoot = join(deviceRoot, "hwmon", hwmonDir)
+        const [name, temp] = await Promise.all([
+          readSysfsFile(join(hwmonRoot, "name")),
+          readSysfsFile(join(hwmonRoot, "temp1_input")),
+        ])
+        hwmonNames.push(name ?? "")
+        hwmonTemps.push(temp ?? "")
+      }
+    } catch {
+      // No readable hwmon directory on this card — temperature stays null.
+    }
+    samples.push(parseAmdSysfsCardFiles({ busyPercent, vramTotal, vramUsed, hwmonNames, hwmonTemps }))
+  }
+  return samples
 }
 
 type NativeReader = () => Promise<NativeMetricSample>
