@@ -129,6 +129,22 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
     }
   })
 
+  // Absence reason surfaced: when no provider reported live sensors and every
+  // GPU/VRAM field is null, explain the unavailable source instead of leaving
+  // silent em-dashes (spec scenario "Absence reason surfaced").
+  const gpuAbsenceNote = createMemo(() => {
+    const metrics = metricsState.sharedMetrics()
+    const dataAbsent = metrics.gpuPercent === null &&
+      metrics.gpuTemperatureCelsius === null &&
+      metrics.gpuMemoryUsedBytes === null &&
+      metrics.gpuMemoryTotalBytes === null &&
+      metrics.gpuMemoryPercent === null
+    if (!dataAbsent) return null
+    if (metrics.gpuSource === "nvidia-smi-not-found") return "GPU data unavailable: nvidia-smi not found"
+    if (metrics.gpuSource === "empty-controllers") return "GPU data unavailable: no live GPU controller"
+    return null
+  })
+
   return (
     <box flexDirection="column" paddingLeft={0} paddingRight={0}>
       <text fg={props.theme.text} attributes={TextAttributes.BOLD}>{icons.title} {systemMetricsTitle()}</text>
@@ -165,6 +181,11 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
             {formatGiB(gpuMemory().usedBytes)} / {formatGiB(gpuMemory().totalBytes)} ({formatPercent(gpuMemory().percent)})
           </text>
         </box>
+        <Show when={gpuAbsenceNote() !== null}>
+          <box flexDirection="row">
+            <text fg={props.theme.textMuted}> {gpuAbsenceNote()} </text>
+          </box>
+        </Show>
       </Show>
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.network}</text>

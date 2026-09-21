@@ -43,8 +43,8 @@ The README is available in **Español**, **English**, and **Português**.
 
 - CPU: utilización y temperatura.
 - RAM: memoria usada, total y porcentaje.
-- GPU: utilización y temperatura.
-- GPU VRAM: memoria usada, total y porcentaje.
+- GPU: utilización y temperatura (NVIDIA en Linux/Windows mediante `nvidia-smi`; AMD en Linux mediante amdgpu sysfs donde esté soportado).
+- GPU VRAM: memoria usada, total y porcentaje (NVIDIA en Linux/Windows mediante `nvidia-smi`; AMD en Linux mediante amdgpu sysfs donde esté soportado).
 - En Apple Silicon, la fila se muestra como **RAM** y usa los contadores generales de memoria del sistema.
 - Red: velocidad de descarga y subida en tiempo real.
 - CPU, RAM y red se consultan con una cadencia general de 2 segundos; GPU, VRAM y temperaturas usan una caché expirable de 10 segundos para reducir el coste sin congelar los sensores.
@@ -152,15 +152,15 @@ npm run build
 
 - CPU: utilization and temperature.
 - RAM: used memory, total memory, and percentage.
-- GPU: utilization and temperature.
-- GPU VRAM: used memory, total memory, and percentage.
+- GPU: utilization and temperature (NVIDIA on Linux/Windows via `nvidia-smi`; Linux AMD via amdgpu sysfs where supported).
+- GPU VRAM: used memory, total memory, and percentage (NVIDIA on Linux/Windows via `nvidia-smi`; Linux AMD via amdgpu sysfs where supported).
 - On Apple Silicon, the row is labeled **RAM** and uses the system-wide memory counters.
 - Network: live download and upload speeds.
 - CPU, RAM, and network use the 2-second general cadence; GPU, VRAM, and temperatures use an expiring 10-second cache to reduce cost without freezing sensors.
 - Uses the active OpenCode theme colors.
 - Windows uses Unicode icons by default (installed-font detection does not change selection); Linux/macOS use Nerd Font only when installed and retain Unicode fallback.
 - On Windows, visible Unicode icons are used by default because OpenCode cannot detect the terminal's active font.
-- Supports Linux, macOS, and Windows when the operating system exposes the metrics.
+- Supports Linux, macOS, and Windows when the operating system exposes the metrics: NVIDIA via `nvidia-smi` on Linux/Windows; Linux AMD via amdgpu sysfs where supported; Intel i915 and Windows AMD note their limits (no busy signal; WMI `AdapterRAM` total only); macOS uses unified RAM.
 - CPU and RAM use native, read-only paths without subprocesses during normal operation: Linux reads `/proc/stat` and `/proc/meminfo`; Windows uses `GetSystemTimes` and `GlobalMemoryStatusEx` through the lazy Koffi integration; macOS uses Mach host statistics and `hw.memsize` on both Intel and Apple Silicon. If native loading or a read fails, the existing `systeminformation` path is used with the existing timeout and cache protections.
 - Native CPU percentages are deltas between consecutive samples; the first sample is intentionally unavailable. Counter resets, malformed data, and API failures fall back safely. Apple Silicon retains unified-memory semantics and does not treat system RAM as discrete VRAM.
 - On macOS, GPU utilization uses `ioreg` and temperatures use the Stats helper when installed; missing helpers leave only that metric unavailable without interrupting the plugin. Intel retains the discrete-GPU `systeminformation` fallback.
@@ -263,8 +263,8 @@ npm run build
 
 - CPU: utilização e temperatura.
 - RAM: memória usada, total e porcentagem.
-- GPU: utilização e temperatura.
-- GPU VRAM: memória usada, total e porcentagem.
+- GPU: utilização e temperatura (NVIDIA no Linux/Windows via `nvidia-smi`; AMD no Linux via amdgpu sysfs onde houver suporte).
+- GPU VRAM: memória usada, total e porcentagem (NVIDIA no Linux/Windows via `nvidia-smi`; AMD no Linux via amdgpu sysfs onde houver suporte).
 - No Apple Silicon, a linha de memória compartilhada é exibida como **RAM** e usa os contadores gerais de memória do sistema.
 - Rede: velocidades de download e upload em tempo real.
 - CPU, RAM e rede usam a cadência geral de 2 segundos; GPU, VRAM e temperaturas usam uma cache expirável de 10 segundos para reduzir o custo sem congelar os sensores.
@@ -273,7 +273,7 @@ npm run build
 - No Windows, ícones Unicode visíveis são usados por padrão porque o OpenCode não consegue detectar a fonte ativa do terminal.
 - Suporte para Linux, macOS e Windows quando o sistema disponibiliza as métricas.
 - No Windows, a temperatura da CPU requer o LibreHardwareMonitor executado como administrador com o **Remote Web Server** ativo em `http://127.0.0.1:8085`.
-- No Windows, a velocidade da rede usa uma chamada nativa `GetIfTable2` de `iphlpapi.dll` via Koffi; o PowerShell permanece apenas como fallback limitado quando a API nativa não pode ser carregada.
+- No Windows, a velocidade da rede usa uma chamada nativa `GetIfTable2` de `iphlpapi.dll` via Koffi; sob Bun, reutiliza um helper Node persistente, e o PowerShell permanece como fallback limitado quando o helper ou a API nativa não podem ser carregados.
 - A agregação nativa inclui interfaces de hardware ativas, exclui interfaces de filtro, loopback e túnel, e soma os contadores `InOctets`/`OutOctets`.
 - As leituras opcionais do Windows são sob demanda, têm timeout e cache; não há timers globais do PowerShell.
 - A detecção de Nerd Font no Linux/macOS é limitada a caminhos conhecidos, dois níveis de profundidade e 256 entradas por diretório; caminhos ausentes ou inacessíveis usam Unicode. O Windows não verifica fontes sem `OPENCODE_MONITOR_NERD_FONT=1`.
@@ -356,6 +356,8 @@ Publicar no npm e instalar no OpenCode são etapas diferentes:
 ### Verificação
 
 ```bash
+npm run install-plugin
+npm run verify-installation
 npm test
 npm run typecheck
 npm run build
