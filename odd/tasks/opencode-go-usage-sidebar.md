@@ -32,7 +32,7 @@ Replace the former Codex-specific panel with OpenCode Go usage for sessions usin
 - This renamed task document and its Engram full-document mirror.
 
 ## Tasks
-- [ ] **CQ-1** — Replace Codex quota UI with secure OpenCode Go remaining-usage indicators.
+- [x] **CQ-1** — Replace Codex quota UI with secure OpenCode Go remaining-usage indicators.
   - User clarification: this is a replacement, not an additional provider panel; never render a Codex section.
   - Evidence supplied for the observed API: GET `https://opencode.ai/zen/go/v1/usage`, bearer API key, and `usage.rolling`, `usage.weekly`, `usage.monthly` windows with `status`, `percent`, and `resetsAt`. This behavior is not guaranteed stable.
   - Route: delegated direct; trigger evidence: implementation requires coordinated changes to quota service, UI, tests, and documentation.
@@ -41,6 +41,7 @@ Replace the former Codex-specific panel with OpenCode Go usage for sessions usin
   - Parent spot-check: `npm test` passed (67 tests, 0 failures).
   - TDD evidence: RED observed after adding Go auth, response parsing, and provider-gating tests; 68 tests passed and the two new Go test files failed to resolve the not-yet-created Go modules. A subsequent malformed-calendar regression (`2026-02-31`) also failed before strict date validation was added; an intermediate README assertion caught capitalization drift and was corrected. Final GREEN: `npm test` passed (67 tests, 0 failures); `npm run typecheck` passed; `npm run build` passed. No TUI visual harness is configured. No live API calls or network/package operations were made.
   - Unsupported assumptions: endpoint/response are observed but undocumented and may change; percent is treated as consumed based on public observations, and `resetsAt` as an ISO timestamp.
+  - Work-unit commit: `084396e` (`feat(tui): show OpenCode Go usage only`).
 
 ## Delivery
 - Strategy: `ask-on-risk` (default); estimate is provisional pending implementation diff.
@@ -49,5 +50,5 @@ Replace the former Codex-specific panel with OpenCode Go usage for sessions usin
 - Slice boundaries: one coherent behavior unit; no PR or remote action authorized.
 
 ## Progress and next step
-- Previously committed Codex quota UI is being replaced per explicit user clarification. Go work remains uncommitted and CQ-1 unchecked pending parent verification/commit.
-- Native RDD preflight remains blocked by sync-generated untracked config/backups; do not attempt selection/review or alter those files. No live API calls, global config edits, managed sync, or PR.
+- The Codex panel has been replaced by OpenCode Go-only usage in commit `084396e`. The local TUI bundle is rebuilt; restart OpenCode to load it.
+- Native RDD preflight remains blocked by sync-generated untracked config/backups; no selection was guessed and no review START occurred. Preserve those files. No live API calls, global config edits, managed sync, or PR.
