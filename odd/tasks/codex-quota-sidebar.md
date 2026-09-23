@@ -37,15 +37,15 @@ The plugin currently displays local system metrics only. `codexctl` also exposes
   - Route: delegated direct; trigger evidence: implementation requires coordinated changes to quota service, UI, tests, and documentation.
   - Acceptance: active OpenCode Codex account only; quota appears only for a reliably identified OpenAI/Codex session; session provider takes precedence over latest user-message provider; unknown provider hides quotas; provider changes update visibility and polling without stale quota; system metrics remain visible; preserve five-minute polling and line-separated layout; credit balance and quota reset counters have distinct labels; reset counters render applicable / available; no expiry date is inferred or displayed; missing auth/API failure degrades gracefully; secrets are never rendered/logged.
   - Checks: `npm test`, `npm run typecheck`, `npm run build`.
-  - Verification evidence: Original implementation/visual/credits commits `e8eadea`, `e21143e`, and `fb7eba9` were verified previously. Provider fallback defect: the SDK `Message` has direct `role` and `model.providerID` fields, not an `info` wrapper. RED observed when the direct-shape test imported missing `getLatestUserMessageProvider`; GREEN: `npm test` passed (61 tests); parent spot-check `npm test` passed (61 tests); `npm run typecheck` passed; `npm run build` passed. No live API calls were made.
-  - Commits: `e8eadea` (`feat(codex): show active account quota resets`), `e21143e` (`fix(tui): separate Codex quota reset lines`), `fb7eba9` (`fix(tui): clarify Codex quota credits`); provider-visibility refinement commit pending.
+  - Verification evidence: Original implementation/visual/credits commits `e8eadea`, `e21143e`, and `fb7eba9` were verified previously. Provider fallback defect: the SDK `Message` has direct `role` and `model.providerID` fields, not an `info` wrapper. RED observed when the direct-shape test imported missing `getLatestUserMessageProvider`; GREEN: `npm test` passed (61 tests); parent spot-check `npm test` passed (61 tests); `npm run typecheck` passed; `npm run build` passed. No live API calls were made. Native assessment: medium, `review_due=true`, `review_due_reason=slice_budget_reached` (490 changed lines).
+  - Commits: `e8eadea` (`feat(codex): show active account quota resets`), `e21143e` (`fix(tui): separate Codex quota reset lines`), `fb7eba9` (`fix(tui): clarify Codex quota credits`), `89e46d5` (`fix(tui): hide Codex quota for other providers`).
 
 ## Delivery
 - Strategy: `ask-on-risk` (default); estimate is provisional pending implementation diff.
-- Chain strategy: `stacked-to-main` (selected based on the pre-commit estimate; final native assessment is 390 changed lines, under budget. No PR was authorized or created).
+- Chain strategy: `stacked-to-main` (selected based on the pre-commit estimate; no PR was authorized or created).
 - Branch: `feat/codex-quota-sidebar`.
 - Slice boundaries: one coherent behavior unit; no PR or remote action authorized.
 
 ## Progress and next step
 - Exploration completed against the plugin and local `codexctl` source; active-account-only scope confirmed by the user.
-- CQ-1 is reopened for provider-aware quota visibility. Provider-visibility checks passed; do not mark complete until the refinement work-unit commit is recorded. No PR or remote action was taken.
+- CQ-1 remains pending native review preflight. After managed sync, status requires an intended-untracked selection for `.gentle-ai-default-agent.json`; no capture operation was available in this runtime, so no selection was guessed. The committed implementation and functional checks passed. No PR or remote action was taken.
