@@ -31,13 +31,13 @@ The plugin currently displays local system metrics only. `codexctl` also exposes
 - This task document and its Engram mirror.
 
 ## Tasks
-- [ ] **CQ-1** — Add secure active-account quota reading, five-minute polling, sidebar usage/reset indicators, and focused tests/docs.
+- [x] **CQ-1** — Add secure active-account quota reading, five-minute polling, sidebar usage/reset indicators, and focused tests/docs.
   - Reopened by user feedback: the Codex quota area was difficult to scan because usage, credits, additional limits, and reset details shared compact single-line separators; display each detail on separate lines.
   - Route: delegated direct; trigger evidence: implementation requires coordinated changes to quota service, UI, tests, and documentation.
   - Acceptance: active OpenCode Codex account only; quota and available reset timing render; five-minute refresh is independent; missing auth/API failure degrades gracefully; secrets are never rendered/logged.
   - Checks: `npm test`, `npm run typecheck`, `npm run build`.
-  - Verification evidence: Original implementation commit `e8eadea` verified previously. Visual refinement: RED observed when the new formatter test imported the not-yet-implemented `formatCodexQuotaWindowLines`; GREEN: `npm test` passed (58 tests); parent spot-check `npm test` passed (58 tests); `npm run typecheck` passed; `npm run build` passed. No live API calls were made.
-  - Commits: `e8eadea` (`feat(codex): show active account quota resets`); visual refinement commit pending.
+  - Verification evidence: Original implementation commit `e8eadea` verified previously. Visual refinement: RED observed when the new formatter test imported the not-yet-implemented `formatCodexQuotaWindowLines`; GREEN: `npm test` passed (58 tests); parent spot-check `npm test` passed (58 tests); `npm run typecheck` passed; `npm run build` passed. No live API calls were made. Final native RDD assessment: `medium`, `review_due=false`, `review_due_reason=under_budget` (360 changed lines).
+  - Commits: `e8eadea` (`feat(codex): show active account quota resets`), `e21143e` (`fix(tui): separate Codex quota reset lines`).
 
 ## Delivery
 - Strategy: `ask-on-risk` (default); estimate is provisional pending implementation diff.
@@ -46,4 +46,4 @@ The plugin currently displays local system metrics only. `codexctl` also exposes
 
 ## Progress and next step
 - Exploration completed against the plugin and local `codexctl` source; active-account-only scope confirmed by the user.
-- Original CQ-1 implementation committed as `e8eadea`. Reopened by user feedback for clearer line-separated quota details; checks passed and the visual-refinement work-unit commit remains pending. No PR or remote action was taken.
+- CQ-1 is complete in commits `e8eadea` and `e21143e`. The line-break refinement is built at the local path configured in `~/.config/opencode/tui.json`; restart OpenCode to load it. Final RDD assessment remains under budget. No PR or remote action was taken.
