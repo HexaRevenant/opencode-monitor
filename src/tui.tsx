@@ -123,6 +123,7 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
   let quotaRefreshRequested = false
   let quotaDisposed = false
   let quotaGeneration = 0
+  let selectedNextModelProvider: string | undefined
 
   const refreshQuota = async () => {
     if (!codexSession() || quotaDisposed) return
@@ -152,7 +153,11 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
     const messages = props.api.state.session.messages(sessionID) as readonly {
       role?: string; model?: { providerID?: string }
     }[]
-    const isCodex = selectCodexProvider(session?.model?.providerID, getLatestUserMessageProvider(messages))
+    const isCodex = selectCodexProvider(
+      session?.model?.providerID,
+      getLatestUserMessageProvider(messages),
+      selectedNextModelProvider,
+    )
     if (isCodex === untrack(codexSession)) return
 
     setCodexSession(isCodex)
@@ -173,6 +178,7 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
   createEffect(() => {
     const sessionID = props.sessionID
     quotaDisposed = false
+    selectedNextModelProvider = undefined
     untrack(() => {
       setCodexSession(false)
       setQuota(undefined)
@@ -184,9 +190,15 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
     const disposeMessage = props.api.event.on("message.updated", (event) => {
       if (event.properties.sessionID === sessionID) untrack(() => updateCodexSession(sessionID))
     })
+    const disposeNextModel = props.api.event.on("session.next.model.switched", (event) => {
+      if (event.properties.sessionID !== sessionID) return
+      selectedNextModelProvider = event.properties.model.providerID
+      untrack(() => updateCodexSession(sessionID))
+    })
     onCleanup(() => {
       disposeSession()
       disposeMessage()
+      disposeNextModel()
       quotaDisposed = true
       quotaRefreshRequested = false
       quotaGeneration += 1

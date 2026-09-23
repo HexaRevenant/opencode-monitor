@@ -7,7 +7,8 @@ export function getLatestUserMessageProvider(messages: readonly UserMessageModel
 export function selectCodexProvider(
   sessionProvider: string | undefined,
   latestUserMessageProvider: string | undefined,
+  selectedNextModelProvider?: string,
 ): boolean {
-  const provider = sessionProvider || latestUserMessageProvider
+  const provider = selectedNextModelProvider || sessionProvider || latestUserMessageProvider
   return provider === "openai"
 }

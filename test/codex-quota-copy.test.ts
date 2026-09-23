@@ -46,6 +46,11 @@ it("selects stored session provider before latest user message and hides unknown
   assert.equal(selectCodexProvider(undefined, undefined), false)
 })
 
+it("prioritizes the active next-model provider over stored and message providers", () => {
+  assert.equal(selectCodexProvider("openai", "openai", "opencode"), false)
+  assert.equal(selectCodexProvider("opencode", "opencode", "openai"), true)
+})
+
 it("reads provider directly from the latest user-message model", () => {
   assert.equal(getLatestUserMessageProvider([
     { role: "user", model: { providerID: "anthropic" } },
