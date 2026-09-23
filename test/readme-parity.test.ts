@@ -111,10 +111,10 @@ it("documents Codex quota refresh and credential handling in all README language
   const spanish = section("## Español", "### Requisitos")
   const english = section("## English", "### Requirements")
   const portuguese = section("## Português", "### Requisitos")
-  for (const [language, text, refresh, authStore, security, balance, resetCredits, order, expiry] of [
-    ["Spanish", spanish, /cada cinco minutos/, /almacén de autenticación existente de OpenCode/, /no guarda ni registra credenciales/, /saldo de créditos/, /créditos de reinicio de cuota/, /aplicables \/ disponibles/, /no muestra una fecha de vencimiento/],
-    ["English", english, /every five minutes/, /existing auth store/, /does not store or log credentials/, /credit balance/, /quota reset credits/, /applicable \/ available/, /does not display an expiry date/],
-    ["Portuguese", portuguese, /a cada cinco minutos/, /armazenamento de autenticação existente do OpenCode/, /não armazena nem registra credenciais/, /saldo de créditos/, /créditos de reinicialização da cota/, /aplicáveis \/ disponíveis/, /não exibe uma data de validade/],
+  for (const [language, text, refresh, authStore, security, balance, resetCredits, order, expiry, providerOnly, metricsVisible] of [
+    ["Spanish", spanish, /cada cinco minutos/, /almacén de autenticación existente de OpenCode/, /no guarda ni registra credenciales/, /saldo de créditos/, /créditos de reinicio de cuota/, /aplicables \/ disponibles/, /no muestra una fecha de vencimiento/, /solo aparece en sesiones que usan el proveedor OpenAI\/Codex/, /métricas del sistema siempre permanecen visibles/],
+    ["English", english, /every five minutes/, /existing auth store/, /does not store or log credentials/, /credit balance/, /quota reset credits/, /applicable \/ available/, /does not display an expiry date/, /only in sessions using the OpenAI\/Codex provider/, /system metrics always remain visible/],
+    ["Portuguese", portuguese, /a cada cinco minutos/, /armazenamento de autenticação existente do OpenCode/, /não armazena nem registra credenciais/, /saldo de créditos/, /créditos de reinicialização da cota/, /aplicáveis \/ disponíveis/, /não exibe uma data de validade/, /somente em sessões que usam o provedor OpenAI\/Codex/, /métricas do sistema permanecem sempre visíveis/],
   ] as const) {
     assert.match(text, /Codex/, `${language} Codex feature is missing`)
     assert.match(text, refresh, `${language} refresh cadence is missing`)
@@ -124,5 +124,7 @@ it("documents Codex quota refresh and credential handling in all README language
     assert.match(text, resetCredits, `${language} quota-reset-credit distinction is missing`)
     assert.match(text, order, `${language} reset-credit counter order is missing`)
     assert.match(text, expiry, `${language} expiry-display limitation is missing`)
+    assert.match(text, providerOnly, `${language} provider visibility limit is missing`)
+    assert.match(text, metricsVisible, `${language} system-metrics visibility is missing`)
   }
 })

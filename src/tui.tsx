@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import { Show, createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import type { Accessor, Setter } from "solid-js"
-import { For } from "solid-js"
+import { createEffect, For, untrack } from "solid-js"
 import { TextAttributes } from "@opentui/core"
 import type { TuiPlugin, TuiPluginModule, TuiThemeCurrent } from "@opencode-ai/plugin/tui"
 import { formatGiB, formatPercent, formatRate, formatTemperature } from "./format.js"
@@ -9,6 +9,7 @@ import { gpuMemoryLabel, readMetrics, type SystemMetrics } from "./metrics.js"
 import { getMetricIcons, hasNerdFont, shouldUseNerdFont } from "./font.js"
 import { CODEX_QUOTA_REFRESH_MS, fetchCodexQuota, readCodexAuth, type CodexQuota } from "./codex-quota.js"
 import { formatCodexQuotaWindowLines, formatQuotaResetCredits, getCodexQuotaLabels } from "./codex-quota-copy.js"
+import { getLatestUserMessageProvider, selectCodexProvider } from "./codex-provider.js"
 
 const REFRESH_INTERVAL_MS = 2000
 // Windows uses Unicode unless the user explicitly opts into Nerd Font icons.
@@ -109,31 +110,88 @@ function formatClockDate(date: Date): string {
   }).format(date).replace(",", "")
 }
 
-function MetricsPanel(props: { theme: TuiThemeCurrent }) {
+type TuiApi = Parameters<TuiPlugin>[0]
+
+function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: string }) {
   const quotaLabels = getCodexQuotaLabels(currentLocale())
   const [clock, setClock] = createSignal(new Date())
   const [quota, setQuota] = createSignal<CodexQuota>()
+  const [codexSession, setCodexSession] = createSignal(false)
   let clockTimer: ReturnType<typeof setInterval> | undefined
   let quotaTimer: ReturnType<typeof setInterval> | undefined
   let quotaRefreshing = false
+  let quotaRefreshRequested = false
+  let quotaDisposed = false
+  let quotaGeneration = 0
 
   const refreshQuota = async () => {
-    if (quotaRefreshing) return
+    if (!codexSession() || quotaDisposed) return
+    if (quotaRefreshing) {
+      quotaRefreshRequested = true
+      return
+    }
     quotaRefreshing = true
+    const generation = quotaGeneration
     try {
       const credential = await readCodexAuth()
-      setQuota(credential ? await fetchCodexQuota(credential) : undefined)
+      const nextQuota = credential ? await fetchCodexQuota(credential) : undefined
+      if (generation === quotaGeneration && codexSession()) setQuota(nextQuota)
     } catch {
-      setQuota(undefined)
+      if (generation === quotaGeneration) setQuota(undefined)
     } finally {
       quotaRefreshing = false
+      if (quotaRefreshRequested && codexSession() && !quotaDisposed) {
+        quotaRefreshRequested = false
+        queueMicrotask(() => void refreshQuota())
+      }
     }
   }
 
-  onMount(startMetricsPolling)
-  onMount(() => {
+  const updateCodexSession = (sessionID: string) => {
+    const session = props.api.state.session.get(sessionID) as { model?: { providerID?: string } } | undefined
+    const messages = props.api.state.session.messages(sessionID) as readonly {
+      role?: string; model?: { providerID?: string }
+    }[]
+    const isCodex = selectCodexProvider(session?.model?.providerID, getLatestUserMessageProvider(messages))
+    if (isCodex === untrack(codexSession)) return
+
+    setCodexSession(isCodex)
+    if (!isCodex) {
+      quotaGeneration += 1
+      quotaRefreshRequested = false
+      setQuota(undefined)
+      if (quotaTimer !== undefined) clearInterval(quotaTimer)
+      quotaTimer = undefined
+      return
+    }
+
     void refreshQuota()
     quotaTimer = setInterval(() => void refreshQuota(), CODEX_QUOTA_REFRESH_MS)
+  }
+
+  onMount(startMetricsPolling)
+  createEffect(() => {
+    const sessionID = props.sessionID
+    quotaDisposed = false
+    untrack(() => {
+      setCodexSession(false)
+      setQuota(undefined)
+      updateCodexSession(sessionID)
+    })
+    const disposeSession = props.api.event.on("session.updated", (event) => {
+      if (event.properties.sessionID === sessionID) untrack(() => updateCodexSession(sessionID))
+    })
+    const disposeMessage = props.api.event.on("message.updated", (event) => {
+      if (event.properties.sessionID === sessionID) untrack(() => updateCodexSession(sessionID))
+    })
+    onCleanup(() => {
+      disposeSession()
+      disposeMessage()
+      quotaDisposed = true
+      quotaRefreshRequested = false
+      quotaGeneration += 1
+      if (quotaTimer !== undefined) clearInterval(quotaTimer)
+    })
   })
   onMount(() => {
     clockTimer = setInterval(() => setClock(new Date()), 1000)
@@ -202,7 +260,7 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
           ↓ {formatRate(metricsState.sharedMetrics().downloadBytesPerSecond)} ↑ {formatRate(metricsState.sharedMetrics().uploadBytesPerSecond)}
         </text>
       </box>
-      <Show when={quota()}>
+      <Show when={codexSession() && quota()}>
         {(data) => <>
           <text fg={props.theme.text} attributes={TextAttributes.BOLD}>{quotaLabels.heading}</text>
           <For each={[
@@ -243,8 +301,7 @@ const tui: TuiPlugin = async (api, options) => {
     order: 250,
     slots: {
       sidebar_content(_context, props) {
-        void props.session_id
-        return <MetricsPanel theme={_context.theme.current} />
+        return <MetricsPanel theme={_context.theme.current} api={api} sessionID={props.session_id} />
       },
     },
   })

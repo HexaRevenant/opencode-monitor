@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { it } from "node:test"
 import { formatCodexQuotaWindowLines, formatQuotaResetCredits, getCodexQuotaLabels } from "../src/codex-quota-copy.js"
+import { getLatestUserMessageProvider, selectCodexProvider } from "../src/codex-provider.js"
 
 it("localizes Codex quota labels for supported languages and falls back to English", () => {
   assert.equal(getCodexQuotaLabels("de_DE.UTF-8").heading, "Codex-Nutzung")
@@ -35,4 +36,24 @@ it("labels credit balance separately from quota reset credits and formats applic
   assert.equal(portuguese.creditBalance, "Saldo de créditos")
   assert.equal(portuguese.quotaResetCredits, "Créditos de reinicialização da cota")
   assert.equal(formatQuotaResetCredits(0, 3, portuguese), "0 aplicáveis / 3 disponíveis")
+})
+
+it("selects stored session provider before latest user message and hides unknown providers", () => {
+  assert.equal(selectCodexProvider("openai", "anthropic"), true)
+  assert.equal(selectCodexProvider("anthropic", "openai"), false)
+  assert.equal(selectCodexProvider(undefined, "openai"), true)
+  assert.equal(selectCodexProvider(undefined, "anthropic"), false)
+  assert.equal(selectCodexProvider(undefined, undefined), false)
+})
+
+it("reads provider directly from the latest user-message model", () => {
+  assert.equal(getLatestUserMessageProvider([
+    { role: "user", model: { providerID: "anthropic" } },
+    { role: "assistant", model: { providerID: "openai" } },
+    { role: "user", model: { providerID: "openai" } },
+  ]), "openai")
+  assert.equal(getLatestUserMessageProvider([
+    { role: "user", model: { providerID: "openai" } },
+    { role: "user" },
+  ]), undefined)
 })

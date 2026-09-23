@@ -31,13 +31,14 @@ The plugin currently displays local system metrics only. `codexctl` also exposes
 - This task document and its Engram mirror.
 
 ## Tasks
-- [x] **CQ-1** — Add secure active-account quota reading, five-minute polling, sidebar usage/reset indicators, and focused tests/docs.
+- [ ] **CQ-1** — Add secure active-account quota reading, five-minute polling, sidebar usage/reset indicators, and focused tests/docs.
   - Reopened by user feedback: the `credits.balance` value was ambiguous beside `rate_limit_reset_credits`; identify credit balance and quota reset credits separately, and render reset counters applicable / available, in that order.
+  - Reopened by user feedback: show the Codex quota section only when the current session uses OpenAI/Codex; keep system metrics visible for every provider. Use session provider then latest user-message provider, and hide quotas when provider is unknown.
   - Route: delegated direct; trigger evidence: implementation requires coordinated changes to quota service, UI, tests, and documentation.
-  - Acceptance: active OpenCode Codex account only; credit balance and quota reset counters have distinct labels; reset counters render applicable / available; no expiry date is inferred or displayed; preserve five-minute polling and line-separated layout; missing auth/API failure degrades gracefully; secrets are never rendered/logged.
+  - Acceptance: active OpenCode Codex account only; quota appears only for a reliably identified OpenAI/Codex session; session provider takes precedence over latest user-message provider; unknown provider hides quotas; provider changes update visibility and polling without stale quota; system metrics remain visible; preserve five-minute polling and line-separated layout; credit balance and quota reset counters have distinct labels; reset counters render applicable / available; no expiry date is inferred or displayed; missing auth/API failure degrades gracefully; secrets are never rendered/logged.
   - Checks: `npm test`, `npm run typecheck`, `npm run build`.
-  - Verification evidence: Original implementation commit `e8eadea` verified previously. First visual refinement commit `e21143e` separated quota display lines. Credits clarification: RED observed after adding tests for missing localized balance/reset-credit labels and applicable-first ordering; GREEN: `npm test` passed (59 tests); parent spot-check `npm test` passed (59 tests); `npm run typecheck` passed; `npm run build` passed. No live API calls were made. Final native RDD assessment: `medium`, `review_due=false`, `review_due_reason=under_budget` (390 changed lines).
-  - Commits: `e8eadea` (`feat(codex): show active account quota resets`), `e21143e` (`fix(tui): separate Codex quota reset lines`), `fb7eba9` (`fix(tui): clarify Codex quota credits`).
+  - Verification evidence: Original implementation/visual/credits commits `e8eadea`, `e21143e`, and `fb7eba9` were verified previously. Provider fallback defect: the SDK `Message` has direct `role` and `model.providerID` fields, not an `info` wrapper. RED observed when the direct-shape test imported missing `getLatestUserMessageProvider`; GREEN: `npm test` passed (61 tests); parent spot-check `npm test` passed (61 tests); `npm run typecheck` passed; `npm run build` passed. No live API calls were made.
+  - Commits: `e8eadea` (`feat(codex): show active account quota resets`), `e21143e` (`fix(tui): separate Codex quota reset lines`), `fb7eba9` (`fix(tui): clarify Codex quota credits`); provider-visibility refinement commit pending.
 
 ## Delivery
 - Strategy: `ask-on-risk` (default); estimate is provisional pending implementation diff.
@@ -47,4 +48,4 @@ The plugin currently displays local system metrics only. `codexctl` also exposes
 
 ## Progress and next step
 - Exploration completed against the plugin and local `codexctl` source; active-account-only scope confirmed by the user.
-- CQ-1 is complete in commits `e8eadea`, `e21143e`, and `fb7eba9`. The local TUI build is configured in `~/.config/opencode/tui.json`; restart OpenCode to load this wording. Final RDD assessment was under budget. No PR or remote action was taken.
+- CQ-1 is reopened for provider-aware quota visibility. Provider-visibility checks passed; do not mark complete until the refinement work-unit commit is recorded. No PR or remote action was taken.
