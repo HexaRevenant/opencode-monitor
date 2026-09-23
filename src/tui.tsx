@@ -264,26 +264,38 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
         {(data) => <>
           <text fg={props.theme.text} attributes={TextAttributes.BOLD}>{quotaLabels.heading}</text>
           <For each={[
-            [quotaLabels.session, data().primary],
-            [quotaLabels.weekly, data().secondary],
-          ] as const}>{([label, window]) => <box flexDirection="column">
-            <text fg={props.theme.text}>{label}</text>
+            [icons.codexSession, quotaLabels.session, data().primary],
+            [icons.codexWeekly, quotaLabels.weekly, data().secondary],
+          ] as const}>{([icon, label, window]) => <box flexDirection="column">
+            <box flexDirection="row">
+              <text fg={props.theme.success}>{icon}</text>
+              <text fg={props.theme.text}> {label}</text>
+            </box>
             <For each={formatCodexQuotaWindowLines(window, quotaLabels)}>{(line) => <text fg={props.theme.textMuted}>{line}</text>}</For>
           </box>}</For>
           <Show when={data().credits}>
             {(credits) => <box flexDirection="column">
               <Show when={credits().balance !== undefined || credits().unlimited !== undefined}>
-                <text fg={props.theme.text}>{quotaLabels.creditBalance}</text>
+                <box flexDirection="row">
+                  <text fg={props.theme.success}>{icons.creditBalance}</text>
+                  <text fg={props.theme.text}> {quotaLabels.creditBalance}</text>
+                </box>
                 <text fg={props.theme.textMuted}>{credits().unlimited ? quotaLabels.unlimited : credits().balance ?? quotaLabels.unavailable}</text>
               </Show>
               <Show when={credits().available !== undefined || credits().applicable !== undefined}>
-                <text fg={props.theme.text}>{quotaLabels.quotaResetCredits}</text>
+                <box flexDirection="row">
+                  <text fg={props.theme.success}>{icons.quotaResetCredits}</text>
+                  <text fg={props.theme.text}> {quotaLabels.quotaResetCredits}</text>
+                </box>
                 <text fg={props.theme.textMuted}>{formatQuotaResetCredits(credits().applicable, credits().available, quotaLabels)}</text>
               </Show>
             </box>}
           </Show>
           <For each={data().additional}>{(item) => <box flexDirection="column">
-            <text fg={props.theme.text}>{item.name}</text>
+            <box flexDirection="row">
+              <text fg={props.theme.success}>{icons.additionalLimit}</text>
+              <text fg={props.theme.text}> {item.name}</text>
+            </box>
             <text fg={props.theme.textMuted}>{item.usedPercent === undefined ? quotaLabels.unavailable : `${item.usedPercent}% ${quotaLabels.used}`}</text>
             <text fg={props.theme.textMuted}>{item.resetAt ? `${quotaLabels.resets} ${new Date(item.resetAt * 1000).toLocaleString()}` : item.resetAfterSeconds === undefined ? quotaLabels.resetUnavailable : `${quotaLabels.resetsIn} ${item.resetAfterSeconds}s`}</text>
           </box>}</For>

@@ -54,9 +54,17 @@ export const nerdFontIcons = {
   vram: "\u{f035b}",
   thermometer: "\u{f2c7}",
   network: "\u{f06f3}",
+  codexSession: "\u{f017}",
+  codexWeekly: "\u{f073}",
+  creditBalance: "\u{f09d}",
+  quotaResetCredits: "\u{f021}",
+  additionalLimit: "\u{f0ae}",
 } as const
 
-export const unicodeIcons = { title: "▦", clock: "◷", calendar: "▦", cpu: "▣", ram: "▤", gpu: "◆", vram: "◈", thermometer: "♨", network: "⇅" } as const
+export const unicodeIcons = {
+  title: "▦", clock: "◷", calendar: "▦", cpu: "▣", ram: "▤", gpu: "◆", vram: "◈", thermometer: "♨", network: "⇅",
+  codexSession: "◷", codexWeekly: "▦", creditBalance: "¤", quotaResetCredits: "↻", additionalLimit: "◇",
+} as const
 
 export function getMetricIcons(useNerdFont: boolean) {
   return useNerdFont ? nerdFontIcons : unicodeIcons
