@@ -104,3 +104,21 @@ it("documents bounded Portuguese PowerShell fallback wording", async () => {
   const portugueseFeatures = readme.slice(readme.indexOf("## Português"), readme.indexOf("### Requisitos", readme.indexOf("## Português")))
   assert.match(portugueseFeatures, /PowerShell permanece como fallback limitado quando o helper ou a API nativa não podem ser carregados/)
 })
+
+it("documents Codex quota refresh and credential handling in all README languages", async () => {
+  const readme = await readFile(new URL("../README.md", import.meta.url), "utf8")
+  const section = (heading: string, nextHeading: string) => readme.slice(readme.indexOf(heading), readme.indexOf(nextHeading, readme.indexOf(heading)))
+  const spanish = section("## Español", "### Requisitos")
+  const english = section("## English", "### Requirements")
+  const portuguese = section("## Português", "### Requisitos")
+  for (const [language, text, refresh, authStore, security] of [
+    ["Spanish", spanish, /cada cinco minutos/, /almacén de autenticación existente de OpenCode/, /no guarda ni registra credenciales/],
+    ["English", english, /every five minutes/, /existing auth store/, /does not store or log credentials/],
+    ["Portuguese", portuguese, /a cada cinco minutos/, /armazenamento de autenticação existente do OpenCode/, /não armazena nem registra credenciais/],
+  ] as const) {
+    assert.match(text, /Codex/, `${language} Codex feature is missing`)
+    assert.match(text, refresh, `${language} refresh cadence is missing`)
+    assert.match(text, authStore, `${language} auth-store note is missing`)
+    assert.match(text, security, `${language} credential-safety note is missing`)
+  }
+})

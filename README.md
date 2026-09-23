@@ -61,6 +61,8 @@ The README is available in **Español**, **English**, and **Português**.
 - GPU VRAM: memoria usada, total y porcentaje.
 - En Apple Silicon, la fila se muestra como **RAM** y usa los contadores generales de memoria del sistema.
 - Red: velocidad de descarga y subida en tiempo real.
+- Uso de Codex: cuotas de sesión y semanales, créditos disponibles, límites adicionales y horarios de restablecimiento proporcionados por la API para la cuenta OAuth activa de OpenCode. Los datos se actualizan cada cinco minutos, de forma independiente; la falta de credenciales o los errores de la API no afectan las métricas del sistema.
+- El acceso a las cuotas lee las credenciales OAuth de la cuenta activa desde el almacén de autenticación existente de OpenCode y envía el token solo al endpoint de uso de Codex. El plugin no guarda ni registra credenciales y no renueva ni persiste tokens caducados; OpenCode gestiona la autenticación.
 - El panel muestra la hora y la fecha actuales, actualizadas cada segundo.
 - CPU, RAM y red se consultan con una cadencia general de 2 segundos; GPU, VRAM y temperaturas usan una caché expirable de 10 segundos para reducir el coste sin congelar los sensores.
 - Colores compatibles con el tema activo de OpenCode.
@@ -171,6 +173,8 @@ npm run build
 - GPU VRAM: used memory, total memory, and percentage.
 - On Apple Silicon, the row is labeled **RAM** and uses the system-wide memory counters.
 - Network: live download and upload speeds.
+- Codex usage: session/weekly quotas, available credits, additional limits, and API-provided reset timings for the active OpenCode Codex OAuth account. Quotas refresh every five minutes independently; missing credentials or API errors do not affect system metrics.
+- Codex quota access reads OpenCode's existing auth store and sends the active OAuth access token only to the Codex usage endpoint. The plugin does not store or log credentials. It does not refresh or persist expired credentials; OpenCode manages authentication.
 - The panel shows the current time and date, updated every second.
 - CPU, RAM, and network use the 2-second general cadence; GPU, VRAM, and temperatures use an expiring 10-second cache to reduce cost without freezing sensors.
 - Uses the active OpenCode theme colors.
@@ -283,6 +287,8 @@ npm run build
 - GPU VRAM: memória usada, total e porcentagem.
 - No Apple Silicon, a linha de memória compartilhada é exibida como **RAM** e usa os contadores gerais de memória do sistema.
 - Rede: velocidades de download e upload em tempo real.
+- Uso do Codex: cotas de sessão e semanais, créditos disponíveis, limites adicionais e horários de reinicialização fornecidos pela API para a conta OAuth ativa do OpenCode. Os dados são atualizados a cada cinco minutos, independentemente; a ausência de credenciais ou erros da API não afeta as métricas do sistema.
+- O acesso às cotas lê as credenciais OAuth da conta ativa no armazenamento de autenticação existente do OpenCode e envia o token somente ao endpoint de uso do Codex. O plugin não armazena nem registra credenciais e não renova nem persiste tokens expirados; a autenticação é gerenciada pelo OpenCode.
 - O painel mostra a hora e a data atuais, atualizadas a cada segundo.
 - CPU, RAM e rede usam a cadência geral de 2 segundos; GPU, VRAM e temperaturas usam uma cache expirável de 10 segundos para reduzir o custo sem congelar os sensores.
 - Usa as cores do tema ativo do OpenCode.

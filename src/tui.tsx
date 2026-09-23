@@ -1,11 +1,14 @@
 /** @jsxImportSource @opentui/solid */
 import { Show, createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import type { Accessor, Setter } from "solid-js"
+import { For } from "solid-js"
 import { TextAttributes } from "@opentui/core"
 import type { TuiPlugin, TuiPluginModule, TuiThemeCurrent } from "@opencode-ai/plugin/tui"
 import { formatGiB, formatPercent, formatRate, formatTemperature } from "./format.js"
 import { gpuMemoryLabel, readMetrics, type SystemMetrics } from "./metrics.js"
 import { getMetricIcons, hasNerdFont, shouldUseNerdFont } from "./font.js"
+import { CODEX_QUOTA_REFRESH_MS, fetchCodexQuota, readCodexAuth, type CodexQuota } from "./codex-quota.js"
+import { getCodexQuotaLabels } from "./codex-quota-copy.js"
 
 const REFRESH_INTERVAL_MS = 2000
 // Windows uses Unicode unless the user explicitly opts into Nerd Font icons.
@@ -75,11 +78,7 @@ function stopMetricsPolling() {
 }
 
 function systemMetricsTitle(): string {
-  const locale =
-    process.env.LC_ALL ??
-    process.env.LANGUAGE?.split(":")[0] ??
-    process.env.LANG ??
-    Intl.DateTimeFormat().resolvedOptions().locale
+  const locale = currentLocale()
   const language = locale.split(/[-_.]/)[0].toLowerCase()
   return (
     {
@@ -89,6 +88,15 @@ function systemMetricsTitle(): string {
       it: "Metriche di sistema",
       pt: "Métricas do sistema",
     }[language] ?? "System metrics"
+  )
+}
+
+function currentLocale(): string {
+  return (
+    process.env.LC_ALL ??
+    process.env.LANGUAGE?.split(":")[0] ??
+    process.env.LANG ??
+    Intl.DateTimeFormat().resolvedOptions().locale
   )
 }
 
@@ -102,15 +110,37 @@ function formatClockDate(date: Date): string {
 }
 
 function MetricsPanel(props: { theme: TuiThemeCurrent }) {
+  const quotaLabels = getCodexQuotaLabels(currentLocale())
   const [clock, setClock] = createSignal(new Date())
+  const [quota, setQuota] = createSignal<CodexQuota>()
   let clockTimer: ReturnType<typeof setInterval> | undefined
+  let quotaTimer: ReturnType<typeof setInterval> | undefined
+  let quotaRefreshing = false
+
+  const refreshQuota = async () => {
+    if (quotaRefreshing) return
+    quotaRefreshing = true
+    try {
+      const credential = await readCodexAuth()
+      setQuota(credential ? await fetchCodexQuota(credential) : undefined)
+    } catch {
+      setQuota(undefined)
+    } finally {
+      quotaRefreshing = false
+    }
+  }
 
   onMount(startMetricsPolling)
+  onMount(() => {
+    void refreshQuota()
+    quotaTimer = setInterval(() => void refreshQuota(), CODEX_QUOTA_REFRESH_MS)
+  })
   onMount(() => {
     clockTimer = setInterval(() => setClock(new Date()), 1000)
   })
   onCleanup(() => {
     stopMetricsPolling()
+    if (quotaTimer !== undefined) clearInterval(quotaTimer)
     if (clockTimer !== undefined) clearInterval(clockTimer)
   })
 
@@ -172,6 +202,28 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
           ↓ {formatRate(metricsState.sharedMetrics().downloadBytesPerSecond)} ↑ {formatRate(metricsState.sharedMetrics().uploadBytesPerSecond)}
         </text>
       </box>
+      <Show when={quota()}>
+        {(data) => <>
+          <text fg={props.theme.text} attributes={TextAttributes.BOLD}>{quotaLabels.heading}</text>
+          <For each={[
+            [quotaLabels.session, data().primary],
+            [quotaLabels.weekly, data().secondary],
+          ] as const}>{([label, window]) => <box flexDirection="row">
+            <text fg={props.theme.text}>{label} </text>
+            <text fg={props.theme.textMuted}>{window ? `${window.usedPercent}% ${quotaLabels.used} · ${quotaLabels.resets} ${window.resetAt ? new Date(window.resetAt * 1000).toLocaleString() : quotaLabels.unavailable}` : quotaLabels.unavailable}</text>
+          </box>}</For>
+          <Show when={data().credits}>
+            {(credits) => <box flexDirection="row">
+              <text fg={props.theme.text}>{quotaLabels.credits} </text>
+              <text fg={props.theme.textMuted}>{credits().unlimited ? quotaLabels.unlimited : credits().balance ?? quotaLabels.unavailable}{credits().available === undefined ? "" : ` · ${credits().available} ${quotaLabels.available} / ${credits().applicable ?? quotaLabels.unavailable} ${quotaLabels.applicable}`}</text>
+            </box>}
+          </Show>
+          <For each={data().additional}>{(item) => <box flexDirection="row">
+            <text fg={props.theme.text}>{item.name} </text>
+            <text fg={props.theme.textMuted}>{item.usedPercent === undefined ? quotaLabels.unavailable : `${item.usedPercent}% ${quotaLabels.used}`}{item.resetAt ? ` · ${quotaLabels.resets} ${new Date(item.resetAt * 1000).toLocaleString()}` : item.resetAfterSeconds === undefined ? ` · ${quotaLabels.resetUnavailable}` : ` · ${quotaLabels.resetsIn} ${item.resetAfterSeconds}s`}</text>
+          </box>}</For>
+        </>}
+      </Show>
     </box>
   )
 }
