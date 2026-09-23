@@ -8,7 +8,7 @@ import { formatGiB, formatPercent, formatRate, formatTemperature } from "./forma
 import { gpuMemoryLabel, readMetrics, type SystemMetrics } from "./metrics.js"
 import { getMetricIcons, hasNerdFont, shouldUseNerdFont } from "./font.js"
 import { CODEX_QUOTA_REFRESH_MS, fetchCodexQuota, readCodexAuth, type CodexQuota } from "./codex-quota.js"
-import { formatCodexQuotaWindowLines, getCodexQuotaLabels } from "./codex-quota-copy.js"
+import { formatCodexQuotaWindowLines, formatQuotaResetCredits, getCodexQuotaLabels } from "./codex-quota-copy.js"
 
 const REFRESH_INTERVAL_MS = 2000
 // Windows uses Unicode unless the user explicitly opts into Nerd Font icons.
@@ -214,10 +214,13 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
           </box>}</For>
           <Show when={data().credits}>
             {(credits) => <box flexDirection="column">
-              <text fg={props.theme.text}>{quotaLabels.credits}</text>
-              <text fg={props.theme.textMuted}>{credits().unlimited ? quotaLabels.unlimited : credits().balance ?? quotaLabels.unavailable}</text>
-              <Show when={credits().available !== undefined}>
-                <text fg={props.theme.textMuted}>{credits().available} {quotaLabels.available} / {credits().applicable ?? quotaLabels.unavailable} {quotaLabels.applicable}</text>
+              <Show when={credits().balance !== undefined || credits().unlimited !== undefined}>
+                <text fg={props.theme.text}>{quotaLabels.creditBalance}</text>
+                <text fg={props.theme.textMuted}>{credits().unlimited ? quotaLabels.unlimited : credits().balance ?? quotaLabels.unavailable}</text>
+              </Show>
+              <Show when={credits().available !== undefined || credits().applicable !== undefined}>
+                <text fg={props.theme.text}>{quotaLabels.quotaResetCredits}</text>
+                <text fg={props.theme.textMuted}>{formatQuotaResetCredits(credits().applicable, credits().available, quotaLabels)}</text>
               </Show>
             </box>}
           </Show>

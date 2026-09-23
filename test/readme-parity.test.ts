@@ -111,14 +111,18 @@ it("documents Codex quota refresh and credential handling in all README language
   const spanish = section("## Español", "### Requisitos")
   const english = section("## English", "### Requirements")
   const portuguese = section("## Português", "### Requisitos")
-  for (const [language, text, refresh, authStore, security] of [
-    ["Spanish", spanish, /cada cinco minutos/, /almacén de autenticación existente de OpenCode/, /no guarda ni registra credenciales/],
-    ["English", english, /every five minutes/, /existing auth store/, /does not store or log credentials/],
-    ["Portuguese", portuguese, /a cada cinco minutos/, /armazenamento de autenticação existente do OpenCode/, /não armazena nem registra credenciais/],
+  for (const [language, text, refresh, authStore, security, balance, resetCredits, order, expiry] of [
+    ["Spanish", spanish, /cada cinco minutos/, /almacén de autenticación existente de OpenCode/, /no guarda ni registra credenciales/, /saldo de créditos/, /créditos de reinicio de cuota/, /aplicables \/ disponibles/, /no muestra una fecha de vencimiento/],
+    ["English", english, /every five minutes/, /existing auth store/, /does not store or log credentials/, /credit balance/, /quota reset credits/, /applicable \/ available/, /does not display an expiry date/],
+    ["Portuguese", portuguese, /a cada cinco minutos/, /armazenamento de autenticação existente do OpenCode/, /não armazena nem registra credenciais/, /saldo de créditos/, /créditos de reinicialização da cota/, /aplicáveis \/ disponíveis/, /não exibe uma data de validade/],
   ] as const) {
     assert.match(text, /Codex/, `${language} Codex feature is missing`)
     assert.match(text, refresh, `${language} refresh cadence is missing`)
     assert.match(text, authStore, `${language} auth-store note is missing`)
     assert.match(text, security, `${language} credential-safety note is missing`)
+    assert.match(text, balance, `${language} credit-balance distinction is missing`)
+    assert.match(text, resetCredits, `${language} quota-reset-credit distinction is missing`)
+    assert.match(text, order, `${language} reset-credit counter order is missing`)
+    assert.match(text, expiry, `${language} expiry-display limitation is missing`)
   }
 })
