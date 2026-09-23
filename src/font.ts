@@ -54,18 +54,16 @@ export const nerdFontIcons = {
   vram: "\u{f035b}",
   thermometer: "\u{f2c7}",
   network: "\u{f06f3}",
-  codexSession: "\u{f017}",
-  codexWeekly: "\u{f073}",
-  creditBalance: "\u{f09d}",
-  quotaResetCredits: "\u{f021}",
-  additionalLimit: "\u{f0ae}",
+  goRolling: "\u{f017}",
+  goWeekly: "\u{f073}",
+  goMonthly: "\u{f073}",
   disclosureExpanded: "▼",
   disclosureCollapsed: "▶",
 } as const
 
 export const unicodeIcons = {
   title: "▦", clock: "◷", calendar: "▦", cpu: "▣", ram: "▤", gpu: "◆", vram: "◈", thermometer: "♨", network: "⇅",
-  codexSession: "◷", codexWeekly: "▦", creditBalance: "¤", quotaResetCredits: "↻", additionalLimit: "◇",
+  goRolling: "◷", goWeekly: "▦", goMonthly: "▣",
   disclosureExpanded: "▼", disclosureCollapsed: "▶",
 } as const
 

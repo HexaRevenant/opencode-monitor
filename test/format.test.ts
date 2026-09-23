@@ -42,7 +42,7 @@ describe("Hack Nerd Font paths and fallback", () => {
     assert.equal(isNerdFontFile("OtherFont.ttf"), false)
     assert.equal(getMetricIcons(false).cpu, "▣")
     assert.equal(getMetricIcons(false).vram, "◈")
-    for (const name of ["codexSession", "codexWeekly", "creditBalance", "quotaResetCredits", "additionalLimit"] as const) {
+    for (const name of ["goRolling", "goWeekly", "goMonthly"] as const) {
       assert.ok(getMetricIcons(false)[name].length > 0, `Unicode ${name} icon should be available`)
       assert.ok(getMetricIcons(true)[name].length > 0, `Nerd Font ${name} icon should be available`)
       assert.notEqual(getMetricIcons(true)[name], getMetricIcons(false)[name], `${name} should have a font-specific variant`)

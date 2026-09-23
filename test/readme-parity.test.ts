@@ -105,26 +105,24 @@ it("documents bounded Portuguese PowerShell fallback wording", async () => {
   assert.match(portugueseFeatures, /PowerShell permanece como fallback limitado quando o helper ou a API nativa não podem ser carregados/)
 })
 
-it("documents Codex quota refresh and credential handling in all README languages", async () => {
+it("documents OpenCode Go usage refresh and API-key handling in all README languages", async () => {
   const readme = await readFile(new URL("../README.md", import.meta.url), "utf8")
   const section = (heading: string, nextHeading: string) => readme.slice(readme.indexOf(heading), readme.indexOf(nextHeading, readme.indexOf(heading)))
   const spanish = section("## Español", "### Requisitos")
   const english = section("## English", "### Requirements")
   const portuguese = section("## Português", "### Requisitos")
-  for (const [language, text, refresh, authStore, security, balance, resetCredits, order, expiry, providerOnly, metricsVisible] of [
-    ["Spanish", spanish, /cada cinco minutos/, /almacén de autenticación existente de OpenCode/, /no guarda ni registra credenciales/, /saldo de créditos/, /créditos de reinicio de cuota/, /aplicables \/ disponibles/, /no muestra una fecha de vencimiento/, /solo aparece en sesiones que usan el proveedor OpenAI\/Codex/, /métricas del sistema siempre permanecen visibles/],
-    ["English", english, /every five minutes/, /existing auth store/, /does not store or log credentials/, /credit balance/, /quota reset credits/, /applicable \/ available/, /does not display an expiry date/, /only in sessions using the OpenAI\/Codex provider/, /system metrics always remain visible/],
-    ["Portuguese", portuguese, /a cada cinco minutos/, /armazenamento de autenticação existente do OpenCode/, /não armazena nem registra credenciais/, /saldo de créditos/, /créditos de reinicialização da cota/, /aplicáveis \/ disponíveis/, /não exibe uma data de validade/, /somente em sessões que usam o provedor OpenAI\/Codex/, /métricas do sistema permanecem sempre visíveis/],
+  for (const [language, text, refresh, authStore, security, windows, providerOnly, metricsVisible, unstableApi] of [
+    ["Spanish", spanish, /cada cinco minutos/, /almacén de autenticación existente de OpenCode/, /no almacena ni registra la clave/i, /ventanas móvil de 5 horas, semanal y mensual/, /proveedor seleccionado de la sesión es `opencode-go`/, /métricas del sistema siguen visibles con cualquier proveedor/, /no están documentados como API estable/],
+    ["English", english, /every five minutes/, /existing auth store/, /never stored or logged/, /rolling 5-hour, weekly, and monthly windows/, /selected session provider is `opencode-go`/, /system metrics remain visible for every provider/, /not documented as a stable API/],
+    ["Portuguese", portuguese, /a cada cinco minutos/, /armazenamento de autenticação existente do OpenCode/, /nunca é armazenada nem registrada/, /janelas móvel de 5 horas, semanal e mensal/, /provedor selecionado da sessão é `opencode-go`/, /métricas do sistema continuam visíveis para todos os provedores/, /não são documentados como uma API estável/],
   ] as const) {
-    assert.match(text, /Codex/, `${language} Codex feature is missing`)
+    assert.match(text, /OpenCode Go/, `${language} OpenCode Go feature is missing`)
     assert.match(text, refresh, `${language} refresh cadence is missing`)
     assert.match(text, authStore, `${language} auth-store note is missing`)
-    assert.match(text, security, `${language} credential-safety note is missing`)
-    assert.match(text, balance, `${language} credit-balance distinction is missing`)
-    assert.match(text, resetCredits, `${language} quota-reset-credit distinction is missing`)
-    assert.match(text, order, `${language} reset-credit counter order is missing`)
-    assert.match(text, expiry, `${language} expiry-display limitation is missing`)
+    assert.match(text, security, `${language} API-key safety note is missing`)
+    assert.match(text, windows, `${language} usage windows are missing`)
     assert.match(text, providerOnly, `${language} provider visibility limit is missing`)
     assert.match(text, metricsVisible, `${language} system-metrics visibility is missing`)
+    assert.match(text, unstableApi, `${language} observed API stability caveat is missing`)
   }
 })

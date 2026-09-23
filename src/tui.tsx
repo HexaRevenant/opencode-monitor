@@ -7,9 +7,9 @@ import type { TuiPlugin, TuiPluginModule, TuiThemeCurrent } from "@opencode-ai/p
 import { formatGiB, formatPercent, formatRate, formatTemperature } from "./format.js"
 import { gpuMemoryLabel, readMetrics, type SystemMetrics } from "./metrics.js"
 import { getMetricIcons, hasNerdFont, shouldUseNerdFont } from "./font.js"
-import { CODEX_QUOTA_REFRESH_MS, fetchCodexQuota, readCodexAuth, type CodexQuota } from "./codex-quota.js"
-import { formatCodexQuotaWindowLines, formatQuotaResetCredits, getCodexQuotaLabels } from "./codex-quota-copy.js"
-import { getLatestUserMessageProvider, selectCodexProvider } from "./codex-provider.js"
+import { fetchOpenCodeGoUsage, OPENCODE_GO_USAGE_REFRESH_MS, readOpenCodeGoAuth, type OpenCodeGoUsage } from "./opencode-go-usage.js"
+import { formatOpenCodeGoWindowLines, getOpenCodeGoLabels } from "./opencode-go-usage-copy.js"
+import { getLatestUserMessageProvider, selectOpenCodeGoProvider } from "./opencode-go-provider.js"
 import { currentLocale, formatLocaleDate, formatLocaleDateTime } from "./locale.js"
 
 const REFRESH_INTERVAL_MS = 2000
@@ -101,98 +101,99 @@ type TuiApi = Parameters<TuiPlugin>[0]
 
 function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: string }) {
   const locale = currentLocale()
-  const quotaLabels = getCodexQuotaLabels(locale)
+  const usageLabels = getOpenCodeGoLabels(locale)
   const [clock, setClock] = createSignal(new Date())
-  const [quota, setQuota] = createSignal<CodexQuota>()
-  const [codexSession, setCodexSession] = createSignal(false)
+  const [goUsage, setGoUsage] = createSignal<OpenCodeGoUsage>()
+  const [goSession, setGoSession] = createSignal(false)
   const [metricsExpanded, setMetricsExpanded] = createSignal(true)
   const [quotaExpanded, setQuotaExpanded] = createSignal(true)
   let clockTimer: ReturnType<typeof setInterval> | undefined
-  let quotaTimer: ReturnType<typeof setInterval> | undefined
-  let quotaRefreshing = false
-  let quotaRefreshRequested = false
-  let quotaDisposed = false
-  let quotaGeneration = 0
+  let goUsageTimer: ReturnType<typeof setInterval> | undefined
+  let goRefreshing = false
+  let goRefreshRequested = false
+  let goDisposed = false
+  let goGeneration = 0
   let selectedNextModelProvider: string | undefined
 
-  const refreshQuota = async () => {
-    if (!codexSession() || quotaDisposed) return
-    if (quotaRefreshing) {
-      quotaRefreshRequested = true
+  const refreshGoUsage = async () => {
+    if (!goSession() || goDisposed) return
+    if (goRefreshing) {
+      goRefreshRequested = true
       return
     }
-    quotaRefreshing = true
-    const generation = quotaGeneration
+    goRefreshing = true
+    const generation = goGeneration
     try {
-      const credential = await readCodexAuth()
-      const nextQuota = credential ? await fetchCodexQuota(credential) : undefined
-      if (generation === quotaGeneration && codexSession()) setQuota(nextQuota)
+      const credential = await readOpenCodeGoAuth()
+      const nextUsage = credential ? await fetchOpenCodeGoUsage(credential) : undefined
+      if (generation === goGeneration && goSession()) setGoUsage(nextUsage ?? {})
     } catch {
-      if (generation === quotaGeneration) setQuota(undefined)
+      if (generation === goGeneration) setGoUsage({})
     } finally {
-      quotaRefreshing = false
-      if (quotaRefreshRequested && codexSession() && !quotaDisposed) {
-        quotaRefreshRequested = false
-        queueMicrotask(() => void refreshQuota())
+      goRefreshing = false
+      if (goRefreshRequested && goSession() && !goDisposed) {
+        goRefreshRequested = false
+        queueMicrotask(() => void refreshGoUsage())
       }
     }
   }
 
-  const updateCodexSession = (sessionID: string) => {
+  const updateOpenCodeGoSession = (sessionID: string) => {
     const session = props.api.state.session.get(sessionID) as { model?: { providerID?: string } } | undefined
     const messages = props.api.state.session.messages(sessionID) as readonly {
       role?: string; model?: { providerID?: string }
     }[]
-    const isCodex = selectCodexProvider(
+    const isOpenCodeGo = selectOpenCodeGoProvider(
       session?.model?.providerID,
       getLatestUserMessageProvider(messages),
       selectedNextModelProvider,
     )
-    if (isCodex === untrack(codexSession)) return
+    if (isOpenCodeGo === untrack(goSession)) return
 
-    setCodexSession(isCodex)
-    if (!isCodex) {
-      quotaGeneration += 1
-      quotaRefreshRequested = false
-      setQuota(undefined)
-      if (quotaTimer !== undefined) clearInterval(quotaTimer)
-      quotaTimer = undefined
+    setGoSession(isOpenCodeGo)
+    if (!isOpenCodeGo) {
+      goGeneration += 1
+      goRefreshRequested = false
+      setGoUsage(undefined)
+      if (goUsageTimer !== undefined) clearInterval(goUsageTimer)
+      goUsageTimer = undefined
       return
     }
 
-    void refreshQuota()
-    quotaTimer = setInterval(() => void refreshQuota(), CODEX_QUOTA_REFRESH_MS)
+    setGoUsage({})
+    void refreshGoUsage()
+    goUsageTimer = setInterval(() => void refreshGoUsage(), OPENCODE_GO_USAGE_REFRESH_MS)
   }
 
   onMount(startMetricsPolling)
   createEffect(() => {
     const sessionID = props.sessionID
-    quotaDisposed = false
+    goDisposed = false
     selectedNextModelProvider = undefined
     untrack(() => {
-      setCodexSession(false)
-      setQuota(undefined)
-      updateCodexSession(sessionID)
+      setGoSession(false)
+      setGoUsage(undefined)
+      updateOpenCodeGoSession(sessionID)
     })
     const disposeSession = props.api.event.on("session.updated", (event) => {
-      if (event.properties.sessionID === sessionID) untrack(() => updateCodexSession(sessionID))
+      if (event.properties.sessionID === sessionID) untrack(() => updateOpenCodeGoSession(sessionID))
     })
     const disposeMessage = props.api.event.on("message.updated", (event) => {
-      if (event.properties.sessionID === sessionID) untrack(() => updateCodexSession(sessionID))
+      if (event.properties.sessionID === sessionID) untrack(() => updateOpenCodeGoSession(sessionID))
     })
     const disposeNextModel = props.api.event.on("session.next.model.switched", (event) => {
       if (event.properties.sessionID !== sessionID) return
       selectedNextModelProvider = event.properties.model.providerID
-      untrack(() => updateCodexSession(sessionID))
+      untrack(() => updateOpenCodeGoSession(sessionID))
     })
     onCleanup(() => {
       disposeSession()
       disposeMessage()
       disposeNextModel()
-      quotaDisposed = true
-      quotaRefreshRequested = false
-      quotaGeneration += 1
-      if (quotaTimer !== undefined) clearInterval(quotaTimer)
+      goDisposed = true
+      goRefreshRequested = false
+      goGeneration += 1
+      if (goUsageTimer !== undefined) clearInterval(goUsageTimer)
     })
   })
   onMount(() => {
@@ -200,7 +201,7 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
   })
   onCleanup(() => {
     stopMetricsPolling()
-    if (quotaTimer !== undefined) clearInterval(quotaTimer)
+    if (goUsageTimer !== undefined) clearInterval(goUsageTimer)
     if (clockTimer !== undefined) clearInterval(clockTimer)
   })
 
@@ -269,51 +270,26 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
       </box>
       </>
       </Show>
-      <Show when={codexSession()}>
+      <Show when={goSession()}>
         <>
           <text> </text>
           <box flexDirection="row" onMouseDown={(event) => { if (event.button === 0) setQuotaExpanded((expanded) => !expanded) }}>
             <text fg={props.theme.text}>{quotaExpanded() ? icons.disclosureExpanded : icons.disclosureCollapsed}</text>
-            <text fg={props.theme.text} attributes={TextAttributes.BOLD}> {icons.codexSession} {quotaLabels.heading}</text>
+            <text fg={props.theme.text} attributes={TextAttributes.BOLD}> {icons.goRolling} {usageLabels.heading}</text>
           </box>
           <Show when={quotaExpanded()}>
-          <Show when={quota()}>
+          <Show when={goUsage()}>
           {(data) => <>
           <For each={[
-            [icons.codexSession, quotaLabels.session, data().primary],
-            [icons.codexWeekly, quotaLabels.weekly, data().secondary],
+            [icons.goRolling, usageLabels.rolling, data().rolling],
+            [icons.goWeekly, usageLabels.weekly, data().weekly],
+            [icons.goMonthly, usageLabels.monthly, data().monthly],
           ] as const}>{([icon, label, window]) => <box flexDirection="column">
             <box flexDirection="row">
               <text fg={props.theme.success}>{icon}</text>
               <text fg={props.theme.text}> {label}</text>
             </box>
-            <For each={formatCodexQuotaWindowLines(window, quotaLabels, locale)}>{(line) => <text fg={props.theme.textMuted}>{line}</text>}</For>
-          </box>}</For>
-          <Show when={data().credits}>
-            {(credits) => <box flexDirection="column">
-              <Show when={credits().balance !== undefined || credits().unlimited !== undefined}>
-                <box flexDirection="row">
-                  <text fg={props.theme.success}>{icons.creditBalance}</text>
-                  <text fg={props.theme.text}> {quotaLabels.creditBalance}</text>
-                </box>
-                <text fg={props.theme.textMuted}>{credits().unlimited ? quotaLabels.unlimited : credits().balance ?? quotaLabels.unavailable}</text>
-              </Show>
-              <Show when={credits().available !== undefined || credits().applicable !== undefined}>
-                <box flexDirection="row">
-                  <text fg={props.theme.success}>{icons.quotaResetCredits}</text>
-                  <text fg={props.theme.text}> {quotaLabels.quotaResetCredits}</text>
-                </box>
-                <text fg={props.theme.textMuted}>{formatQuotaResetCredits(credits().applicable, credits().available, quotaLabels)}</text>
-              </Show>
-            </box>}
-          </Show>
-          <For each={data().additional}>{(item) => <box flexDirection="column">
-            <box flexDirection="row">
-              <text fg={props.theme.success}>{icons.additionalLimit}</text>
-              <text fg={props.theme.text}> {item.name}</text>
-            </box>
-            <text fg={props.theme.textMuted}>{item.usedPercent === undefined ? quotaLabels.unavailable : `${item.usedPercent}% ${quotaLabels.used}`}</text>
-            <text fg={props.theme.textMuted}>{item.resetAt ? `${quotaLabels.resets} ${formatLocaleDateTime(new Date(item.resetAt * 1000), locale)}` : item.resetAfterSeconds === undefined ? quotaLabels.resetUnavailable : `${quotaLabels.resetsIn} ${item.resetAfterSeconds}s`}</text>
+            <For each={formatOpenCodeGoWindowLines(window, usageLabels, locale)}>{(line) => <text fg={props.theme.textMuted}>{line}</text>}</For>
           </box>}</For>
           </>}
           </Show>

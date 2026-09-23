@@ -4,11 +4,11 @@ export function getLatestUserMessageProvider(messages: readonly UserMessageModel
   return [...messages].reverse().find((message) => message.role === "user")?.model?.providerID
 }
 
-export function selectCodexProvider(
+export function selectOpenCodeGoProvider(
   sessionProvider: string | undefined,
   latestUserMessageProvider: string | undefined,
   selectedNextModelProvider?: string,
 ): boolean {
   const provider = selectedNextModelProvider || sessionProvider || latestUserMessageProvider
-  return provider === "openai"
+  return provider === "opencode-go"
 }
