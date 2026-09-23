@@ -25,12 +25,14 @@ export function currentLocale(
 }
 
 export function formatLocaleDate(date: Date, locale: string): string {
-  return new Intl.DateTimeFormat(locale, {
+  const formatted = new Intl.DateTimeFormat(locale, {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(date)
+  const language = locale.split(/[-_]/)[0].toLowerCase()
+  return language === "es" ? formatted.replace(/\s+de(?=\s+\d{4}$)/, "") : formatted
 }
 
 export function formatLocaleDateTime(date: Date, locale: string): string {

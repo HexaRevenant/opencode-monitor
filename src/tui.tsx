@@ -221,7 +221,7 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
   return (
     <box flexDirection="column" paddingLeft={0} paddingRight={0}>
       <box flexDirection="row" onMouseDown={(event) => { if (event.button === 0) setMetricsExpanded((expanded) => !expanded) }}>
-        <text fg={props.theme.success}>{metricsExpanded() ? icons.disclosureExpanded : icons.disclosureCollapsed}</text>
+        <text fg={props.theme.text}>{metricsExpanded() ? icons.disclosureExpanded : icons.disclosureCollapsed}</text>
         <text fg={props.theme.text} attributes={TextAttributes.BOLD}> {icons.title} {systemMetricsTitle()}</text>
       </box>
       <Show when={metricsExpanded()}>
@@ -273,7 +273,7 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
         <>
           <text> </text>
           <box flexDirection="row" onMouseDown={(event) => { if (event.button === 0) setQuotaExpanded((expanded) => !expanded) }}>
-            <text fg={props.theme.success}>{quotaExpanded() ? icons.disclosureExpanded : icons.disclosureCollapsed}</text>
+            <text fg={props.theme.text}>{quotaExpanded() ? icons.disclosureExpanded : icons.disclosureCollapsed}</text>
             <text fg={props.theme.text} attributes={TextAttributes.BOLD}> {icons.codexSession} {quotaLabels.heading}</text>
           </box>
           <Show when={quotaExpanded()}>

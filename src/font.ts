@@ -59,14 +59,14 @@ export const nerdFontIcons = {
   creditBalance: "\u{f09d}",
   quotaResetCredits: "\u{f021}",
   additionalLimit: "\u{f0ae}",
-  disclosureExpanded: "\u{f078}",
-  disclosureCollapsed: "\u{f054}",
+  disclosureExpanded: "▼",
+  disclosureCollapsed: "▶",
 } as const
 
 export const unicodeIcons = {
   title: "▦", clock: "◷", calendar: "▦", cpu: "▣", ram: "▤", gpu: "◆", vram: "◈", thermometer: "♨", network: "⇅",
   codexSession: "◷", codexWeekly: "▦", creditBalance: "¤", quotaResetCredits: "↻", additionalLimit: "◇",
-  disclosureExpanded: "▾", disclosureCollapsed: "▸",
+  disclosureExpanded: "▼", disclosureCollapsed: "▶",
 } as const
 
 export function getMetricIcons(useNerdFont: boolean) {

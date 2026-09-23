@@ -48,10 +48,10 @@ describe("Hack Nerd Font paths and fallback", () => {
       assert.notEqual(getMetricIcons(true)[name], getMetricIcons(false)[name], `${name} should have a font-specific variant`)
     }
     for (const name of ["disclosureExpanded", "disclosureCollapsed"] as const) {
-      assert.ok(getMetricIcons(false)[name].length > 0, `Unicode ${name} icon should be available`)
-      assert.ok(getMetricIcons(true)[name].length > 0, `Nerd Font ${name} icon should be available`)
-      assert.notEqual(getMetricIcons(true)[name], getMetricIcons(false)[name], `${name} should have a font-specific variant`)
+      assert.equal(getMetricIcons(false)[name], getMetricIcons(true)[name], `${name} should match across font modes`)
     }
+    assert.equal(getMetricIcons(false).disclosureExpanded, "▼")
+    assert.equal(getMetricIcons(false).disclosureCollapsed, "▶")
     assert.notEqual(getMetricIcons(true).cpu, getMetricIcons(false).cpu)
     assert.notEqual(getMetricIcons(true).vram, getMetricIcons(false).vram)
     assert.equal(shouldUseNerdFont("win32", true, {}), false)
