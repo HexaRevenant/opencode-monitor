@@ -15,6 +15,7 @@ export type CodexQuotaLabels = {
 }
 
 import type { QuotaWindow } from "./codex-quota.js"
+import { formatLocaleDateTime } from "./locale.js"
 
 const labels: Record<string, CodexQuotaLabels> = {
   de: { heading: "Codex-Nutzung", session: "Sitzung", weekly: "Wöchentlich", used: "verbraucht", resets: "Zurücksetzung", unavailable: "nicht verfügbar", creditBalance: "Guthabenstand", quotaResetCredits: "Kontingent-Reset-Credits", unlimited: "unbegrenzt", available: "verfügbar", applicable: "anwendbar", resetUnavailable: "Zurücksetzung nicht verfügbar", resetsIn: "Zurücksetzung in" },
@@ -34,11 +35,12 @@ export function getCodexQuotaLabels(locale: string): CodexQuotaLabels {
 export function formatCodexQuotaWindowLines(
   window: QuotaWindow | undefined,
   copy: CodexQuotaLabels,
+  locale = Intl.DateTimeFormat().resolvedOptions().locale,
 ): string[] {
   if (!window) return [copy.unavailable]
   return [
     `${window.usedPercent}% ${copy.used}`,
-    `${copy.resets} ${window.resetAt ? new Date(window.resetAt * 1000).toLocaleString() : copy.unavailable}`,
+    `${copy.resets} ${window.resetAt ? formatLocaleDateTime(new Date(window.resetAt * 1000), locale) : copy.unavailable}`,
   ]
 }
 

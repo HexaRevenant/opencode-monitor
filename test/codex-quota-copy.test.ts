@@ -14,11 +14,30 @@ it("localizes Codex quota labels for supported languages and falls back to Engli
 
 it("formats quota usage and reset as separate display lines", () => {
   const labels = getCodexQuotaLabels("en")
-  assert.deepEqual(formatCodexQuotaWindowLines({ usedPercent: 42, limitWindowSeconds: 18000, resetAt: 1900000000 }, labels), [
+  assert.deepEqual(formatCodexQuotaWindowLines({ usedPercent: 42, limitWindowSeconds: 18000, resetAt: 1900000000 }, labels, "en-US"), [
     "42% used",
-    `resets ${new Date(1900000000 * 1000).toLocaleString()}`,
+    `resets ${new Intl.DateTimeFormat("en-US", { day: "numeric", month: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit" }).format(new Date(1900000000 * 1000))}`,
   ])
   assert.deepEqual(formatCodexQuotaWindowLines(undefined, labels), ["unavailable"])
+})
+
+it("formats quota reset dates in the canonical Chilean day-month-year order", () => {
+  const date = new Date(2024, 8, 23, 12, 34, 56)
+  const lines = formatCodexQuotaWindowLines(
+    { usedPercent: 42, limitWindowSeconds: 18000, resetAt: date.getTime() / 1000 },
+    getCodexQuotaLabels("es-CL"),
+    "es-CL",
+  )
+
+  const resetLine = lines[1]
+  const dateParts = new Intl.DateTimeFormat("es-CL", { dateStyle: "short" }).formatToParts(date)
+  const dayIndex = dateParts.findIndex((part) => part.type === "day")
+  const monthIndex = dateParts.findIndex((part) => part.type === "month")
+  const yearIndex = dateParts.findIndex((part) => part.type === "year")
+  assert.ok(dayIndex < monthIndex && monthIndex < yearIndex)
+  const expectedDate = new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "numeric", year: "numeric" }).format(date)
+  assert.ok(resetLine.includes(expectedDate))
+  assert.match(resetLine, /12:34:56/)
 })
 
 it("labels credit balance separately from quota reset credits and formats applicable before available", () => {

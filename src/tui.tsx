@@ -10,6 +10,7 @@ import { getMetricIcons, hasNerdFont, shouldUseNerdFont } from "./font.js"
 import { CODEX_QUOTA_REFRESH_MS, fetchCodexQuota, readCodexAuth, type CodexQuota } from "./codex-quota.js"
 import { formatCodexQuotaWindowLines, formatQuotaResetCredits, getCodexQuotaLabels } from "./codex-quota-copy.js"
 import { getLatestUserMessageProvider, selectCodexProvider } from "./codex-provider.js"
+import { currentLocale, formatLocaleDate, formatLocaleDateTime } from "./locale.js"
 
 const REFRESH_INTERVAL_MS = 2000
 // Windows uses Unicode unless the user explicitly opts into Nerd Font icons.
@@ -92,31 +93,20 @@ function systemMetricsTitle(): string {
   )
 }
 
-function currentLocale(): string {
-  return (
-    process.env.LC_ALL ??
-    process.env.LANGUAGE?.split(":")[0] ??
-    process.env.LANG ??
-    Intl.DateTimeFormat().resolvedOptions().locale
-  )
-}
-
 function formatClockDate(date: Date): string {
-  return new Intl.DateTimeFormat("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date).replace(",", "")
+  return formatLocaleDate(date, currentLocale())
 }
 
 type TuiApi = Parameters<TuiPlugin>[0]
 
 function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: string }) {
-  const quotaLabels = getCodexQuotaLabels(currentLocale())
+  const locale = currentLocale()
+  const quotaLabels = getCodexQuotaLabels(locale)
   const [clock, setClock] = createSignal(new Date())
   const [quota, setQuota] = createSignal<CodexQuota>()
   const [codexSession, setCodexSession] = createSignal(false)
+  const [metricsExpanded, setMetricsExpanded] = createSignal(true)
+  const [quotaExpanded, setQuotaExpanded] = createSignal(true)
   let clockTimer: ReturnType<typeof setInterval> | undefined
   let quotaTimer: ReturnType<typeof setInterval> | undefined
   let quotaRefreshing = false
@@ -230,7 +220,12 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
 
   return (
     <box flexDirection="column" paddingLeft={0} paddingRight={0}>
-      <text fg={props.theme.text} attributes={TextAttributes.BOLD}>{icons.title} {systemMetricsTitle()}</text>
+      <box flexDirection="row" onMouseDown={(event) => { if (event.button === 0) setMetricsExpanded((expanded) => !expanded) }}>
+        <text fg={props.theme.success}>{metricsExpanded() ? icons.disclosureExpanded : icons.disclosureCollapsed}</text>
+        <text fg={props.theme.text} attributes={TextAttributes.BOLD}> {icons.title} {systemMetricsTitle()}</text>
+      </box>
+      <Show when={metricsExpanded()}>
+      <>
       <box flexDirection="row">
         <text fg={props.theme.success}>{icons.clock}</text>
         <text fg={props.theme.textMuted}> {clock().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}</text>
@@ -272,9 +267,18 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
           ↓ {formatRate(metricsState.sharedMetrics().downloadBytesPerSecond)} ↑ {formatRate(metricsState.sharedMetrics().uploadBytesPerSecond)}
         </text>
       </box>
-      <Show when={codexSession() && quota()}>
-        {(data) => <>
-          <text fg={props.theme.text} attributes={TextAttributes.BOLD}>{quotaLabels.heading}</text>
+      </>
+      </Show>
+      <Show when={codexSession()}>
+        <>
+          <text> </text>
+          <box flexDirection="row" onMouseDown={(event) => { if (event.button === 0) setQuotaExpanded((expanded) => !expanded) }}>
+            <text fg={props.theme.success}>{quotaExpanded() ? icons.disclosureExpanded : icons.disclosureCollapsed}</text>
+            <text fg={props.theme.text} attributes={TextAttributes.BOLD}> {icons.codexSession} {quotaLabels.heading}</text>
+          </box>
+          <Show when={quotaExpanded()}>
+          <Show when={quota()}>
+          {(data) => <>
           <For each={[
             [icons.codexSession, quotaLabels.session, data().primary],
             [icons.codexWeekly, quotaLabels.weekly, data().secondary],
@@ -283,7 +287,7 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
               <text fg={props.theme.success}>{icon}</text>
               <text fg={props.theme.text}> {label}</text>
             </box>
-            <For each={formatCodexQuotaWindowLines(window, quotaLabels)}>{(line) => <text fg={props.theme.textMuted}>{line}</text>}</For>
+            <For each={formatCodexQuotaWindowLines(window, quotaLabels, locale)}>{(line) => <text fg={props.theme.textMuted}>{line}</text>}</For>
           </box>}</For>
           <Show when={data().credits}>
             {(credits) => <box flexDirection="column">
@@ -309,9 +313,12 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
               <text fg={props.theme.text}> {item.name}</text>
             </box>
             <text fg={props.theme.textMuted}>{item.usedPercent === undefined ? quotaLabels.unavailable : `${item.usedPercent}% ${quotaLabels.used}`}</text>
-            <text fg={props.theme.textMuted}>{item.resetAt ? `${quotaLabels.resets} ${new Date(item.resetAt * 1000).toLocaleString()}` : item.resetAfterSeconds === undefined ? quotaLabels.resetUnavailable : `${quotaLabels.resetsIn} ${item.resetAfterSeconds}s`}</text>
+            <text fg={props.theme.textMuted}>{item.resetAt ? `${quotaLabels.resets} ${formatLocaleDateTime(new Date(item.resetAt * 1000), locale)}` : item.resetAfterSeconds === undefined ? quotaLabels.resetUnavailable : `${quotaLabels.resetsIn} ${item.resetAfterSeconds}s`}</text>
           </box>}</For>
-        </>}
+          </>}
+          </Show>
+          </Show>
+        </>
       </Show>
     </box>
   )
