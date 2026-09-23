@@ -8,7 +8,7 @@ import { formatGiB, formatPercent, formatRate, formatTemperature } from "./forma
 import { gpuMemoryLabel, readMetrics, type SystemMetrics } from "./metrics.js"
 import { getMetricIcons, hasNerdFont, shouldUseNerdFont } from "./font.js"
 import { CODEX_QUOTA_REFRESH_MS, fetchCodexQuota, readCodexAuth, type CodexQuota } from "./codex-quota.js"
-import { getCodexQuotaLabels } from "./codex-quota-copy.js"
+import { formatCodexQuotaWindowLines, getCodexQuotaLabels } from "./codex-quota-copy.js"
 
 const REFRESH_INTERVAL_MS = 2000
 // Windows uses Unicode unless the user explicitly opts into Nerd Font icons.
@@ -208,19 +208,23 @@ function MetricsPanel(props: { theme: TuiThemeCurrent }) {
           <For each={[
             [quotaLabels.session, data().primary],
             [quotaLabels.weekly, data().secondary],
-          ] as const}>{([label, window]) => <box flexDirection="row">
-            <text fg={props.theme.text}>{label} </text>
-            <text fg={props.theme.textMuted}>{window ? `${window.usedPercent}% ${quotaLabels.used} · ${quotaLabels.resets} ${window.resetAt ? new Date(window.resetAt * 1000).toLocaleString() : quotaLabels.unavailable}` : quotaLabels.unavailable}</text>
+          ] as const}>{([label, window]) => <box flexDirection="column">
+            <text fg={props.theme.text}>{label}</text>
+            <For each={formatCodexQuotaWindowLines(window, quotaLabels)}>{(line) => <text fg={props.theme.textMuted}>{line}</text>}</For>
           </box>}</For>
           <Show when={data().credits}>
-            {(credits) => <box flexDirection="row">
-              <text fg={props.theme.text}>{quotaLabels.credits} </text>
-              <text fg={props.theme.textMuted}>{credits().unlimited ? quotaLabels.unlimited : credits().balance ?? quotaLabels.unavailable}{credits().available === undefined ? "" : ` · ${credits().available} ${quotaLabels.available} / ${credits().applicable ?? quotaLabels.unavailable} ${quotaLabels.applicable}`}</text>
+            {(credits) => <box flexDirection="column">
+              <text fg={props.theme.text}>{quotaLabels.credits}</text>
+              <text fg={props.theme.textMuted}>{credits().unlimited ? quotaLabels.unlimited : credits().balance ?? quotaLabels.unavailable}</text>
+              <Show when={credits().available !== undefined}>
+                <text fg={props.theme.textMuted}>{credits().available} {quotaLabels.available} / {credits().applicable ?? quotaLabels.unavailable} {quotaLabels.applicable}</text>
+              </Show>
             </box>}
           </Show>
-          <For each={data().additional}>{(item) => <box flexDirection="row">
-            <text fg={props.theme.text}>{item.name} </text>
-            <text fg={props.theme.textMuted}>{item.usedPercent === undefined ? quotaLabels.unavailable : `${item.usedPercent}% ${quotaLabels.used}`}{item.resetAt ? ` · ${quotaLabels.resets} ${new Date(item.resetAt * 1000).toLocaleString()}` : item.resetAfterSeconds === undefined ? ` · ${quotaLabels.resetUnavailable}` : ` · ${quotaLabels.resetsIn} ${item.resetAfterSeconds}s`}</text>
+          <For each={data().additional}>{(item) => <box flexDirection="column">
+            <text fg={props.theme.text}>{item.name}</text>
+            <text fg={props.theme.textMuted}>{item.usedPercent === undefined ? quotaLabels.unavailable : `${item.usedPercent}% ${quotaLabels.used}`}</text>
+            <text fg={props.theme.textMuted}>{item.resetAt ? `${quotaLabels.resets} ${new Date(item.resetAt * 1000).toLocaleString()}` : item.resetAfterSeconds === undefined ? quotaLabels.resetUnavailable : `${quotaLabels.resetsIn} ${item.resetAfterSeconds}s`}</text>
           </box>}</For>
         </>}
       </Show>

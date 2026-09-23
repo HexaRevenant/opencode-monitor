@@ -13,6 +13,8 @@ export type CodexQuotaLabels = {
   resetsIn: string
 }
 
+import type { QuotaWindow } from "./codex-quota.js"
+
 const labels: Record<string, CodexQuotaLabels> = {
   de: { heading: "Codex-Nutzung", session: "Sitzung", weekly: "Wöchentlich", used: "verbraucht", resets: "Zurücksetzung", unavailable: "nicht verfügbar", credits: "Guthaben", unlimited: "unbegrenzt", available: "verfügbar", applicable: "anwendbar", resetUnavailable: "Zurücksetzung nicht verfügbar", resetsIn: "Zurücksetzung in" },
   es: { heading: "Uso de Codex", session: "Sesión", weekly: "Semanal", used: "usado", resets: "se restablece", unavailable: "no disponible", credits: "Créditos", unlimited: "ilimitados", available: "disponibles", applicable: "aplicables", resetUnavailable: "restablecimiento no disponible", resetsIn: "se restablece en" },
@@ -26,4 +28,15 @@ const english: CodexQuotaLabels = { heading: "Codex usage", session: "Session", 
 export function getCodexQuotaLabels(locale: string): CodexQuotaLabels {
   const language = locale.split(/[-_.]/)[0].toLowerCase()
   return labels[language] ?? english
+}
+
+export function formatCodexQuotaWindowLines(
+  window: QuotaWindow | undefined,
+  copy: CodexQuotaLabels,
+): string[] {
+  if (!window) return [copy.unavailable]
+  return [
+    `${window.usedPercent}% ${copy.used}`,
+    `${copy.resets} ${window.resetAt ? new Date(window.resetAt * 1000).toLocaleString() : copy.unavailable}`,
+  ]
 }

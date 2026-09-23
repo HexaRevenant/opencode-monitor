@@ -31,12 +31,13 @@ The plugin currently displays local system metrics only. `codexctl` also exposes
 - This task document and its Engram mirror.
 
 ## Tasks
-- [x] **CQ-1** — Add secure active-account quota reading, five-minute polling, sidebar usage/reset indicators, and focused tests/docs.
+- [ ] **CQ-1** — Add secure active-account quota reading, five-minute polling, sidebar usage/reset indicators, and focused tests/docs.
+  - Reopened by user feedback: the Codex quota area was difficult to scan because usage, credits, additional limits, and reset details shared compact single-line separators; display each detail on separate lines.
   - Route: delegated direct; trigger evidence: implementation requires coordinated changes to quota service, UI, tests, and documentation.
   - Acceptance: active OpenCode Codex account only; quota and available reset timing render; five-minute refresh is independent; missing auth/API failure degrades gracefully; secrets are never rendered/logged.
   - Checks: `npm test`, `npm run typecheck`, `npm run build`.
-  - Verification evidence: Initial RED observed after adding focused tests: import failed because `src/codex-quota.ts` did not yet exist. Final `npm test` passed (57 tests), `npm run typecheck` passed, and `npm run build` passed; parent spot-check `npm test` passed (57 tests). No live API calls were made. Native RDD assessment for this commit: `medium`, `review_due=false`, `review_due_reason=under_budget` (333 changed lines).
-  - Commit: `e8eadea` (`feat(codex): show active account quota resets`).
+  - Verification evidence: Original implementation commit `e8eadea` verified previously. Visual refinement: RED observed when the new formatter test imported the not-yet-implemented `formatCodexQuotaWindowLines`; GREEN: `npm test` passed (58 tests); parent spot-check `npm test` passed (58 tests); `npm run typecheck` passed; `npm run build` passed. No live API calls were made.
+  - Commits: `e8eadea` (`feat(codex): show active account quota resets`); visual refinement commit pending.
 
 ## Delivery
 - Strategy: `ask-on-risk` (default); estimate is provisional pending implementation diff.
@@ -45,4 +46,4 @@ The plugin currently displays local system metrics only. `codexctl` also exposes
 
 ## Progress and next step
 - Exploration completed against the plugin and local `codexctl` source; active-account-only scope confirmed by the user.
-- CQ-1 completed and committed as `e8eadea`; the local RDD assessment was under budget, so this commit does not trigger a review yet. No PR or remote action was taken.
+- Original CQ-1 implementation committed as `e8eadea`. Reopened by user feedback for clearer line-separated quota details; checks passed and the visual-refinement work-unit commit remains pending. No PR or remote action was taken.
