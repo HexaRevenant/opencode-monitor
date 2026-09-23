@@ -31,12 +31,12 @@ The plugin currently displays local system metrics only. `codexctl` also exposes
 - This task document and its Engram mirror.
 
 ## Tasks
-- [ ] **CQ-1** — Add secure active-account quota reading, five-minute polling, sidebar usage/reset indicators, and focused tests/docs.
+- [x] **CQ-1** — Add secure active-account quota reading, five-minute polling, sidebar usage/reset indicators, and focused tests/docs.
   - Route: delegated direct; trigger evidence: implementation requires coordinated changes to quota service, UI, tests, and documentation.
   - Acceptance: active OpenCode Codex account only; quota and available reset timing render; five-minute refresh is independent; missing auth/API failure degrades gracefully; secrets are never rendered/logged.
   - Checks: `npm test`, `npm run typecheck`, `npm run build`.
-  - Verification evidence: Initial implementation: `npm test` passed (55 tests); `npm run typecheck` passed; `npm run build` passed. Localization refinement: `npm test` passed (57 tests); `npm run typecheck` passed; `npm run build` passed. Initial RED observed after adding focused tests: import failed because `src/codex-quota.ts` did not yet exist; initial GREEN observed with all tests passing. No live API calls were made.
-  - Commit: pending.
+  - Verification evidence: Initial RED observed after adding focused tests: import failed because `src/codex-quota.ts` did not yet exist. Final `npm test` passed (57 tests), `npm run typecheck` passed, and `npm run build` passed; parent spot-check `npm test` passed (57 tests). No live API calls were made. Native RDD assessment for this commit: `medium`, `review_due=false`, `review_due_reason=under_budget` (333 changed lines).
+  - Commit: `e8eadea` (`feat(codex): show active account quota resets`).
 
 ## Delivery
 - Strategy: `ask-on-risk` (default); estimate is provisional pending implementation diff.
@@ -45,4 +45,4 @@ The plugin currently displays local system metrics only. `codexctl` also exposes
 
 ## Progress and next step
 - Exploration completed against the plugin and local `codexctl` source; active-account-only scope confirmed by the user.
-- Quota labels and README feature/security notes localized; parent spot-check `npm test` passed (57 tests). Writer reports `npm run typecheck` and `npm run build` passed. Awaiting work-unit commit before marking CQ-1 complete.
+- CQ-1 completed and committed as `e8eadea`; the local RDD assessment was under budget, so this commit does not trigger a review yet. No PR or remote action was taken.
