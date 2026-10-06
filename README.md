@@ -3,8 +3,8 @@
 ## Install globally in OpenCode
 
 ```powershell
-npm install -g opencode-system-metrics-tui@0.1.25
-opencode plugin -g opencode-system-metrics-tui@0.1.25 --force
+npm install -g opencode-system-metrics-tui@0.1.27
+opencode plugin -g opencode-system-metrics-tui@0.1.27 --force
 ```
 
 This is the primary copy/paste installation path. The first command installs the package globally with Node/npm; the second registers it globally in OpenCode and refreshes its package cache. The version must match `package.json`. The helper below skips OpenCode when the expected artifact is already current. Verify the actual installed artifact afterward:
@@ -61,9 +61,9 @@ The README is available in **Español**, **English**, and **Português**.
 - GPU VRAM: memoria usada, total y porcentaje.
 - En Apple Silicon, la fila se muestra como **RAM** y usa los contadores generales de memoria del sistema.
 - Red: velocidad de descarga y subida en tiempo real.
-- Uso de Codex: cuotas de sesión y semanales, saldo de créditos, créditos de reinicio y límites adicionales. Solo aparece cuando el proveedor seleccionado es `openai`; lee `auth.openai` OAuth y consulta `https://chatgpt.com/backend-api/wham/usage`. Se actualiza cada cinco minutos; los datos ausentes se muestran como no disponibles.
+- Uso de Codex: cuotas de sesión y semanales, horarios de restablecimiento, saldo de créditos, créditos de reinicio y límites adicionales. Solo aparece cuando el proveedor seleccionado es `openai`; lee `auth.openai` OAuth y consulta `https://chatgpt.com/backend-api/wham/usage`. Se actualiza cada cinco minutos; los datos ausentes se muestran como no disponibles.
 - Uso de OpenCode Go: porcentaje restante de las ventanas móvil de 5 horas, semanal y mensual, estado y fecha de restablecimiento. El porcentaje restante se calcula como 100 menos el porcentaje consumido, limitado entre 0 y 100; se conserva el estado `rate-limited`. Solo aparece cuando el proveedor seleccionado es `opencode-go`; lee la clave API de `auth["opencode-go"]`. La ruta y respuesta de Go son observadas públicamente y no están documentadas como API estable. Ambos paneles son mutuamente excluyentes; las métricas del sistema siguen visibles con cualquier proveedor. Se actualizan cada cinco minutos; la falta de credenciales o los errores de API no afectan las métricas del sistema.
-- La integración Codex envía el token OAuth y, si existe, `accountId` al endpoint de uso de Codex. La integración Go envía su clave API únicamente al endpoint de uso observado de OpenCode Go. Ninguna credencial se almacena ni se registra; los lectores nunca intercambian ni comparten credenciales.
+- El proveedor del panel prioriza el modelo seleccionado para el siguiente mensaje, luego el modelo de sesión y, por último, el modelo del mensaje más reciente del usuario. La integración Codex envía el token OAuth y, si existe, `accountId` al endpoint de uso de Codex. La integración Go envía su clave API únicamente al endpoint de uso observado de OpenCode Go. Ninguna credencial se almacena ni se registra; los lectores nunca intercambian ni comparten credenciales.
 - El panel muestra la hora y la fecha actuales, actualizadas cada segundo.
 - CPU, RAM y red se consultan con una cadencia general de 2 segundos; GPU, VRAM y temperaturas usan una caché expirable de 10 segundos para reducir el coste sin congelar los sensores.
 - Colores compatibles con el tema activo de OpenCode.
@@ -129,17 +129,17 @@ Después de instalarla, selecciona **Hack Nerd Font Mono** en la terminal y rein
 
 ### Publicación e instalación desde npm
 
-Antes de publicar, cambia el nombre del paquete en `package.json` por un nombre disponible en tu cuenta u organización npm:
+Para publicar este paquete existente, no cambies su nombre. La cuenta de npm debe tener permiso de publicación para `opencode-system-metrics-tui`. Comprueba tu sesión con `npm whoami --registry=https://registry.npmjs.org/` y mantén la misma versión en `package.json` y `package-lock.json`.
 
 ```bash
 npm run build
-npm publish --access public
+npm publish
 ```
 
 En otro equipo:
 
 ```bash
-opencode plugin opencode-system-metrics-tui@0.1.25
+opencode plugin opencode-system-metrics-tui@0.1.27
 ```
 
 El paquete exporta tanto la raíz (`opencode-system-metrics-tui`) como `./tui`; ambas rutas cargan el mismo bundle TUI.
@@ -148,9 +148,9 @@ El instalador de OpenCode configura el plugin TUI automáticamente. Reinicia Ope
 
 Publicar en npm e instalar en OpenCode son pasos distintos:
 
-- `npm publish --access public` publica el paquete en npm.
-- `opencode plugin opencode-system-metrics-tui@0.1.25` lo instala solo en el proyecto actual.
-- `opencode plugin -g opencode-system-metrics-tui@0.1.25 --force` lo instala globalmente para todos los proyectos.
+- `npm publish` publica el paquete en npm.
+- `opencode plugin opencode-system-metrics-tui@0.1.27` lo instala solo en el proyecto actual.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.27 --force` lo instala globalmente para todos los proyectos.
 
 ### Verificación
 
@@ -174,9 +174,9 @@ npm run build
 - GPU VRAM: used memory, total memory, and percentage.
 - On Apple Silicon, the row is labeled **RAM** and uses the system-wide memory counters.
 - Network: live download and upload speeds.
-- Codex usage: session/weekly quotas, credit balance, reset credits, and additional limits. It appears only when the selected provider is `openai`; it reads the OAuth `auth.openai` entry and requests `https://chatgpt.com/backend-api/wham/usage`.
+- Codex usage: session/weekly quotas, reset times, credit balance, reset credits, and additional limits. It appears only when the selected provider is `openai`; it reads the OAuth `auth.openai` entry and requests `https://chatgpt.com/backend-api/wham/usage`.
 - OpenCode Go usage: remaining percentage for rolling 5-hour, weekly, and monthly windows, plus status and reset time. Remaining is `100 - consumed percent`, clamped to 0–100; `rate-limited` is preserved. It appears only for selected provider `opencode-go` and reads that provider's API key. Its endpoint and response are observed publicly, not a stable documented API. The panels are mutually exclusive; system metrics remain visible for every provider. Both refresh every five minutes; missing credentials or API errors do not affect system metrics.
-- Codex sends its OAuth token and optional account ID to its usage endpoint; Go sends its API key only to the observed Go endpoint. Credentials are never stored or logged, and the two readers do not share credentials.
+- The panel provider prefers the model selected for the next message, then the session model, then the latest user-message model. Codex sends its OAuth token and optional account ID to its usage endpoint; Go sends its API key only to the observed Go endpoint. Credentials are never stored or logged, and the two readers do not share credentials.
 - The panel shows the current time and date, updated every second.
 - CPU, RAM, and network use the 2-second general cadence; GPU, VRAM, and temperatures use an expiring 10-second cache to reduce cost without freezing sensors.
 - Uses the active OpenCode theme colors.
@@ -244,17 +244,17 @@ After installation, select **Hack Nerd Font Mono** in the terminal and restart t
 
 ### Publishing and npm installation
 
-Before publishing, change the package name in `package.json` to a name available in your npm account or organization:
+To publish this existing package, keep its name unchanged. The npm account must have publish rights for `opencode-system-metrics-tui`. Check the active session with `npm whoami --registry=https://registry.npmjs.org/`, and keep the version identical in `package.json` and `package-lock.json`.
 
 ```bash
 npm run build
-npm publish --access public
+npm publish
 ```
 
 On another machine:
 
 ```bash
-opencode plugin opencode-system-metrics-tui@0.1.25
+opencode plugin opencode-system-metrics-tui@0.1.27
 ```
 
 The package exports both the root (`opencode-system-metrics-tui`) and `./tui`; both paths load the same TUI bundle.
@@ -263,9 +263,9 @@ The OpenCode installer configures the TUI plugin automatically. Restart OpenCode
 
 Publishing to npm and installing in OpenCode are separate steps:
 
-- `npm publish --access public` publishes the package to npm.
-- `opencode plugin opencode-system-metrics-tui@0.1.25` installs it for the current project only.
-- `opencode plugin -g opencode-system-metrics-tui@0.1.25 --force` installs it globally for all projects.
+- `npm publish` publishes the package to npm.
+- `opencode plugin opencode-system-metrics-tui@0.1.27` installs it for the current project only.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.27 --force` installs it globally for all projects.
 
 ### Verification
 
@@ -289,9 +289,9 @@ npm run build
 - GPU VRAM: memória usada, total e porcentagem.
 - No Apple Silicon, a linha de memória compartilhada é exibida como **RAM** e usa os contadores gerais de memória do sistema.
 - Rede: velocidades de download e upload em tempo real.
-- Uso do Codex: cotas de sessão e semanais, saldo e créditos de reinicialização, além de limites adicionais. Aparece somente quando o provedor selecionado é `openai`; lê o OAuth de `auth.openai` e consulta `https://chatgpt.com/backend-api/wham/usage`.
+- Uso do Codex: cotas de sessão e semanais, horários de redefinição, saldo e créditos de reinicialização, além de limites adicionais. Aparece somente quando o provedor selecionado é `openai`; lê o OAuth de `auth.openai` e consulta `https://chatgpt.com/backend-api/wham/usage`.
 - Uso do OpenCode Go: porcentagem restante das janelas móvel de 5 horas, semanal e mensal, além do status e horário de reinicialização. O restante é `100 - percentual consumido`, limitado entre 0 e 100; o status `rate-limited` é preservado. Aparece somente para o provedor selecionado `opencode-go` e lê a chave de API desse provedor. O endpoint e a resposta são observados publicamente, mas não são documentados como uma API estável. Os painéis são mutuamente exclusivos; as métricas do sistema continuam visíveis para todos os provedores. Ambos atualizam a cada cinco minutos; credenciais ausentes ou erros da API não afetam as métricas do sistema.
-- Codex envia o token OAuth e o `accountId` opcional ao endpoint de uso correspondente; Go envia sua chave de API somente ao endpoint Go observado. Nenhuma credencial é armazenada ou registrada, e os leitores não compartilham credenciais.
+- O painel prioriza o modelo selecionado para a próxima mensagem, depois o modelo da sessão e, por último, o modelo da mensagem mais recente do usuário. Codex envia o token OAuth e o `accountId` opcional ao endpoint de uso correspondente; Go envia sua chave de API somente ao endpoint Go observado. Nenhuma credencial é armazenada ou registrada, e os leitores não compartilham credenciais.
 - O painel mostra a hora e a data atuais, atualizadas a cada segundo.
 - CPU, RAM e rede usam a cadência geral de 2 segundos; GPU, VRAM e temperaturas usam uma cache expirável de 10 segundos para reduzir o custo sem congelar os sensores.
 - Usa as cores do tema ativo do OpenCode.
@@ -356,17 +356,17 @@ Depois da instalação, selecione **Hack Nerd Font Mono** no terminal e reinicie
 
 ### Publicação e instalação pelo npm
 
-Antes de publicar, altere o nome do pacote em `package.json` para um nome disponível na sua conta ou organização npm:
+Para publicar este pacote existente, mantenha o nome sem alterações. A conta npm precisa ter permissão para publicar `opencode-system-metrics-tui`. Verifique a sessão ativa com `npm whoami --registry=https://registry.npmjs.org/` e mantenha a mesma versão em `package.json` e `package-lock.json`.
 
 ```bash
 npm run build
-npm publish --access public
+npm publish
 ```
 
 Em outro computador:
 
 ```bash
-opencode plugin opencode-system-metrics-tui@0.1.25
+opencode plugin opencode-system-metrics-tui@0.1.27
 ```
 
 O pacote exporta tanto a raiz (`opencode-system-metrics-tui`) quanto `./tui`; os dois caminhos carregam o mesmo bundle TUI.
@@ -375,9 +375,9 @@ O instalador do OpenCode configura o plugin TUI automaticamente. Reinicie o Open
 
 Publicar no npm e instalar no OpenCode são etapas diferentes:
 
-- `npm publish --access public` publica o pacote no npm.
-- `opencode plugin opencode-system-metrics-tui@0.1.25` instala o plugin apenas no projeto atual.
-- `opencode plugin -g opencode-system-metrics-tui@0.1.25 --force` instala o plugin globalmente para todos os projetos.
+- `npm publish` publica o pacote no npm.
+- `opencode plugin opencode-system-metrics-tui@0.1.27` instala o plugin apenas no projeto atual.
+- `opencode plugin -g opencode-system-metrics-tui@0.1.27 --force` instala o plugin globalmente para todos os projetos.
 
 ### Verificação
 
