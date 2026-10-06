@@ -47,8 +47,8 @@ Codex and OpenCode Go are distinct services with different credentials, endpoint
 - Strategy: `ask-on-risk` (default); estimate is provisional pending implementation diff.
 - Chain strategy: `stacked-to-main` (selected based on the pre-commit estimate; no PR was authorized or created).
 - Branch: `feat/codex-quota-sidebar`.
-- Slice boundaries: one coherent behavior unit; no PR or remote action authorized.
+- Slice boundaries: one coherent behavior unit; no PR was authorized or created. User-authorized branch push completed to `origin/feat/codex-quota-sidebar`.
 
 ## Progress and next step
 - Commit `b267f69` contains the verified dual-provider correction. `npm test` passed (73/73), `npm run typecheck`, `npm run build`, and `git diff --check` passed; independent verification found no blocking issue.
-- Post-commit assessment was high risk; exact native STATUS stopped with `rdd_disabled`, confirmed by read-only mode status showing global off. No review START, receipt, or approval was created. Local OpenCode configuration/backups remain excluded and untouched; no push or PR was made.
+- Post-commit assessment was high risk; exact native STATUS stopped with `rdd_disabled`, confirmed by read-only mode status showing global off. No review START, receipt, or approval was created. Local OpenCode configuration/backups remain excluded and untouched. The user-authorized feature branch was pushed to `origin/feat/codex-quota-sidebar`; no PR was created.
