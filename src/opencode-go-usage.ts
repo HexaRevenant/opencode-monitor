@@ -1,6 +1,5 @@
 import { readFile as nodeReadFile } from "node:fs/promises"
-import { homedir } from "node:os"
-import { posix, win32 } from "node:path"
+import { defaultOpenCodeAuthPath } from "./opencode-auth-path.js"
 
 export const OPENCODE_GO_USAGE_URL = "https://opencode.ai/zen/go/v1/usage"
 export const OPENCODE_GO_USAGE_REFRESH_MS = 5 * 60_000
@@ -16,20 +15,6 @@ export type OpenCodeGoUsage = {
   rolling?: OpenCodeGoWindow
   weekly?: OpenCodeGoWindow
   monthly?: OpenCodeGoWindow
-}
-
-type Platform = "linux" | "darwin" | "win32"
-
-export function defaultOpenCodeAuthPath(
-  env: NodeJS.ProcessEnv = process.env,
-  home = homedir(),
-  platform: Platform = process.platform as Platform,
-): string {
-  if (platform === "win32") {
-    return win32.join(env.APPDATA ?? win32.join(home, "AppData", "Roaming"), "opencode", "auth.json")
-  }
-  if (platform === "darwin") return posix.join(home, "Library", "Application Support", "opencode", "auth.json")
-  return posix.join(env.XDG_DATA_HOME ?? posix.join(home, ".local", "share"), "opencode", "auth.json")
 }
 
 export async function readOpenCodeGoAuth(options: {

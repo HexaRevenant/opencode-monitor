@@ -1,12 +1,12 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import {
-  defaultOpenCodeAuthPath,
   fetchOpenCodeGoUsage,
   OPENCODE_GO_USAGE_URL,
   parseOpenCodeGoUsage,
   readOpenCodeGoAuth,
 } from "../src/opencode-go-usage.js"
+import { defaultOpenCodeAuthPath } from "../src/opencode-auth-path.js"
 
 describe("OpenCode Go usage", () => {
   it("reads only the OpenCode Go API key using the injected auth file reader", async () => {

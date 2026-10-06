@@ -7,9 +7,11 @@ import type { TuiPlugin, TuiPluginModule, TuiThemeCurrent } from "@opencode-ai/p
 import { formatGiB, formatPercent, formatRate, formatTemperature } from "./format.js"
 import { gpuMemoryLabel, readMetrics, type SystemMetrics } from "./metrics.js"
 import { getMetricIcons, hasNerdFont, shouldUseNerdFont } from "./font.js"
+import { CODEX_QUOTA_REFRESH_MS, fetchCodexQuota, readCodexAuth, type CodexQuota } from "./codex-quota.js"
+import { formatCodexQuotaWindowLines, formatQuotaResetCredits, getCodexQuotaLabels } from "./codex-quota-copy.js"
 import { fetchOpenCodeGoUsage, OPENCODE_GO_USAGE_REFRESH_MS, readOpenCodeGoAuth, type OpenCodeGoUsage } from "./opencode-go-usage.js"
 import { formatOpenCodeGoWindowLines, getOpenCodeGoLabels } from "./opencode-go-usage-copy.js"
-import { getLatestUserMessageProvider, selectOpenCodeGoProvider } from "./opencode-go-provider.js"
+import { getLatestUserMessageProvider, resolveActiveProvider, usagePanelForProvider, type UsagePanel } from "./provider-selection.js"
 import { currentLocale, formatLocaleDate, formatLocaleDateTime } from "./locale.js"
 
 const REFRESH_INTERVAL_MS = 2000
@@ -102,21 +104,27 @@ type TuiApi = Parameters<TuiPlugin>[0]
 function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: string }) {
   const locale = currentLocale()
   const usageLabels = getOpenCodeGoLabels(locale)
+  const codexLabels = getCodexQuotaLabels(locale)
   const [clock, setClock] = createSignal(new Date())
   const [goUsage, setGoUsage] = createSignal<OpenCodeGoUsage>()
-  const [goSession, setGoSession] = createSignal(false)
+  const [codexQuota, setCodexQuota] = createSignal<CodexQuota>()
+  const [activeUsagePanel, setActiveUsagePanel] = createSignal<UsagePanel>()
   const [metricsExpanded, setMetricsExpanded] = createSignal(true)
   const [quotaExpanded, setQuotaExpanded] = createSignal(true)
   let clockTimer: ReturnType<typeof setInterval> | undefined
   let goUsageTimer: ReturnType<typeof setInterval> | undefined
+  let codexQuotaTimer: ReturnType<typeof setInterval> | undefined
   let goRefreshing = false
   let goRefreshRequested = false
-  let goDisposed = false
   let goGeneration = 0
+  let codexRefreshing = false
+  let codexRefreshRequested = false
+  let codexGeneration = 0
+  let quotaDisposed = false
   let selectedNextModelProvider: string | undefined
 
   const refreshGoUsage = async () => {
-    if (!goSession() || goDisposed) return
+    if (activeUsagePanel() !== "opencode-go" || quotaDisposed) return
     if (goRefreshing) {
       goRefreshRequested = true
       return
@@ -126,74 +134,112 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
     try {
       const credential = await readOpenCodeGoAuth()
       const nextUsage = credential ? await fetchOpenCodeGoUsage(credential) : undefined
-      if (generation === goGeneration && goSession()) setGoUsage(nextUsage ?? {})
+      if (generation === goGeneration && activeUsagePanel() === "opencode-go") setGoUsage(nextUsage ?? {})
     } catch {
       if (generation === goGeneration) setGoUsage({})
     } finally {
       goRefreshing = false
-      if (goRefreshRequested && goSession() && !goDisposed) {
+      if (goRefreshRequested && activeUsagePanel() === "opencode-go" && !quotaDisposed) {
         goRefreshRequested = false
         queueMicrotask(() => void refreshGoUsage())
       }
     }
   }
 
-  const updateOpenCodeGoSession = (sessionID: string) => {
+  const refreshCodexQuota = async () => {
+    if (activeUsagePanel() !== "codex" || quotaDisposed) return
+    if (codexRefreshing) {
+      codexRefreshRequested = true
+      return
+    }
+    codexRefreshing = true
+    const generation = codexGeneration
+    try {
+      const credential = await readCodexAuth()
+      const nextQuota = credential ? await fetchCodexQuota(credential) : undefined
+      if (generation === codexGeneration && activeUsagePanel() === "codex") {
+        setCodexQuota(nextQuota ?? { additional: [] })
+      }
+    } catch {
+      if (generation === codexGeneration) setCodexQuota({ additional: [] })
+    } finally {
+      codexRefreshing = false
+      if (codexRefreshRequested && activeUsagePanel() === "codex" && !quotaDisposed) {
+        codexRefreshRequested = false
+        queueMicrotask(() => void refreshCodexQuota())
+      }
+    }
+  }
+
+  const updateActiveProvider = (sessionID: string) => {
     const session = props.api.state.session.get(sessionID) as { model?: { providerID?: string } } | undefined
     const messages = props.api.state.session.messages(sessionID) as readonly {
       role?: string; model?: { providerID?: string }
     }[]
-    const isOpenCodeGo = selectOpenCodeGoProvider(
+    const provider = resolveActiveProvider(
       session?.model?.providerID,
       getLatestUserMessageProvider(messages),
       selectedNextModelProvider,
     )
-    if (isOpenCodeGo === untrack(goSession)) return
+    const nextPanel = usagePanelForProvider(provider)
+    if (nextPanel === untrack(activeUsagePanel)) return
 
-    setGoSession(isOpenCodeGo)
-    if (!isOpenCodeGo) {
-      goGeneration += 1
-      goRefreshRequested = false
-      setGoUsage(undefined)
-      if (goUsageTimer !== undefined) clearInterval(goUsageTimer)
-      goUsageTimer = undefined
-      return
+    goGeneration += 1
+    codexGeneration += 1
+    goRefreshRequested = false
+    codexRefreshRequested = false
+    setGoUsage(undefined)
+    setCodexQuota(undefined)
+    if (goUsageTimer !== undefined) clearInterval(goUsageTimer)
+    if (codexQuotaTimer !== undefined) clearInterval(codexQuotaTimer)
+    goUsageTimer = undefined
+    codexQuotaTimer = undefined
+    setActiveUsagePanel(nextPanel)
+
+    if (nextPanel === "opencode-go") {
+      setGoUsage({})
+      void refreshGoUsage()
+      goUsageTimer = setInterval(() => void refreshGoUsage(), OPENCODE_GO_USAGE_REFRESH_MS)
+    } else if (nextPanel === "codex") {
+      setCodexQuota({ additional: [] })
+      void refreshCodexQuota()
+      codexQuotaTimer = setInterval(() => void refreshCodexQuota(), CODEX_QUOTA_REFRESH_MS)
     }
-
-    setGoUsage({})
-    void refreshGoUsage()
-    goUsageTimer = setInterval(() => void refreshGoUsage(), OPENCODE_GO_USAGE_REFRESH_MS)
   }
 
   onMount(startMetricsPolling)
   createEffect(() => {
     const sessionID = props.sessionID
-    goDisposed = false
+    quotaDisposed = false
     selectedNextModelProvider = undefined
     untrack(() => {
-      setGoSession(false)
+      setActiveUsagePanel(undefined)
       setGoUsage(undefined)
-      updateOpenCodeGoSession(sessionID)
+      setCodexQuota(undefined)
+      updateActiveProvider(sessionID)
     })
     const disposeSession = props.api.event.on("session.updated", (event) => {
-      if (event.properties.sessionID === sessionID) untrack(() => updateOpenCodeGoSession(sessionID))
+      if (event.properties.sessionID === sessionID) untrack(() => updateActiveProvider(sessionID))
     })
     const disposeMessage = props.api.event.on("message.updated", (event) => {
-      if (event.properties.sessionID === sessionID) untrack(() => updateOpenCodeGoSession(sessionID))
+      if (event.properties.sessionID === sessionID) untrack(() => updateActiveProvider(sessionID))
     })
     const disposeNextModel = props.api.event.on("session.next.model.switched", (event) => {
       if (event.properties.sessionID !== sessionID) return
       selectedNextModelProvider = event.properties.model.providerID
-      untrack(() => updateOpenCodeGoSession(sessionID))
+      untrack(() => updateActiveProvider(sessionID))
     })
     onCleanup(() => {
       disposeSession()
       disposeMessage()
       disposeNextModel()
-      goDisposed = true
+      quotaDisposed = true
       goRefreshRequested = false
+      codexRefreshRequested = false
       goGeneration += 1
+      codexGeneration += 1
       if (goUsageTimer !== undefined) clearInterval(goUsageTimer)
+      if (codexQuotaTimer !== undefined) clearInterval(codexQuotaTimer)
     })
   })
   onMount(() => {
@@ -202,6 +248,7 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
   onCleanup(() => {
     stopMetricsPolling()
     if (goUsageTimer !== undefined) clearInterval(goUsageTimer)
+    if (codexQuotaTimer !== undefined) clearInterval(codexQuotaTimer)
     if (clockTimer !== undefined) clearInterval(clockTimer)
   })
 
@@ -270,7 +317,7 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
       </box>
       </>
       </Show>
-      <Show when={goSession()}>
+      <Show when={activeUsagePanel() === "opencode-go"}>
         <>
           <text> </text>
           <box flexDirection="row" onMouseDown={(event) => { if (event.button === 0) setQuotaExpanded((expanded) => !expanded) }}>
@@ -290,6 +337,57 @@ function MetricsPanel(props: { theme: TuiThemeCurrent; api: TuiApi; sessionID: s
               <text fg={props.theme.text}> {label}</text>
             </box>
             <For each={formatOpenCodeGoWindowLines(window, usageLabels, locale)}>{(line) => <text fg={props.theme.textMuted}>{line}</text>}</For>
+          </box>}</For>
+          </>}
+          </Show>
+          </Show>
+        </>
+      </Show>
+      <Show when={activeUsagePanel() === "codex"}>
+        <>
+          <text> </text>
+          <box flexDirection="row" onMouseDown={(event) => { if (event.button === 0) setQuotaExpanded((expanded) => !expanded) }}>
+            <text fg={props.theme.text}>{quotaExpanded() ? icons.disclosureExpanded : icons.disclosureCollapsed}</text>
+            <text fg={props.theme.text} attributes={TextAttributes.BOLD}> {icons.codexSession} {codexLabels.heading}</text>
+          </box>
+          <Show when={quotaExpanded()}>
+          <Show when={codexQuota()}>
+          {(data) => <>
+          <For each={[
+            [icons.codexSession, codexLabels.session, data().primary],
+            [icons.codexWeekly, codexLabels.weekly, data().secondary],
+          ] as const}>{([icon, label, window]) => <box flexDirection="column">
+            <box flexDirection="row">
+              <text fg={props.theme.success}>{icon}</text>
+              <text fg={props.theme.text}> {label}</text>
+            </box>
+            <For each={formatCodexQuotaWindowLines(window, codexLabels, locale)}>{(line) => <text fg={props.theme.textMuted}>{line}</text>}</For>
+          </box>}</For>
+          <Show when={data().credits}>
+            {(credits) => <box flexDirection="column">
+              <Show when={credits().balance !== undefined || credits().unlimited !== undefined}>
+                <box flexDirection="row">
+                  <text fg={props.theme.success}>{icons.creditBalance}</text>
+                  <text fg={props.theme.text}> {codexLabels.creditBalance}</text>
+                </box>
+                <text fg={props.theme.textMuted}>{credits().unlimited ? codexLabels.unlimited : credits().balance ?? codexLabels.unavailable}</text>
+              </Show>
+              <Show when={credits().available !== undefined || credits().applicable !== undefined}>
+                <box flexDirection="row">
+                  <text fg={props.theme.success}>{icons.quotaResetCredits}</text>
+                  <text fg={props.theme.text}> {codexLabels.quotaResetCredits}</text>
+                </box>
+                <text fg={props.theme.textMuted}>{formatQuotaResetCredits(credits().applicable, credits().available, codexLabels)}</text>
+              </Show>
+            </box>}
+          </Show>
+          <For each={data().additional}>{(item) => <box flexDirection="column">
+            <box flexDirection="row">
+              <text fg={props.theme.success}>{icons.additionalLimit}</text>
+              <text fg={props.theme.text}> {item.name}</text>
+            </box>
+            <text fg={props.theme.textMuted}>{item.usedPercent === undefined ? codexLabels.unavailable : `${item.usedPercent}% ${codexLabels.used}`}</text>
+            <text fg={props.theme.textMuted}>{item.resetAt ? `${codexLabels.resets} ${formatLocaleDateTime(new Date(item.resetAt * 1000), locale)}` : item.resetAfterSeconds === undefined ? codexLabels.resetUnavailable : `${codexLabels.resetsIn} ${item.resetAfterSeconds}s`}</text>
           </box>}</For>
           </>}
           </Show>

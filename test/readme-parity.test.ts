@@ -105,24 +105,27 @@ it("documents bounded Portuguese PowerShell fallback wording", async () => {
   assert.match(portugueseFeatures, /PowerShell permanece como fallback limitado quando o helper ou a API nativa não podem ser carregados/)
 })
 
-it("documents OpenCode Go usage refresh and API-key handling in all README languages", async () => {
+it("documents both isolated quota providers and their data sources in every README language", async () => {
   const readme = await readFile(new URL("../README.md", import.meta.url), "utf8")
   const section = (heading: string, nextHeading: string) => readme.slice(readme.indexOf(heading), readme.indexOf(nextHeading, readme.indexOf(heading)))
   const spanish = section("## Español", "### Requisitos")
   const english = section("## English", "### Requirements")
   const portuguese = section("## Português", "### Requisitos")
-  for (const [language, text, refresh, authStore, security, windows, providerOnly, metricsVisible, unstableApi] of [
-    ["Spanish", spanish, /cada cinco minutos/, /almacén de autenticación existente de OpenCode/, /no almacena ni registra la clave/i, /ventanas móvil de 5 horas, semanal y mensual/, /proveedor seleccionado de la sesión es `opencode-go`/, /métricas del sistema siguen visibles con cualquier proveedor/, /no están documentados como API estable/],
-    ["English", english, /every five minutes/, /existing auth store/, /never stored or logged/, /rolling 5-hour, weekly, and monthly windows/, /selected session provider is `opencode-go`/, /system metrics remain visible for every provider/, /not documented as a stable API/],
-    ["Portuguese", portuguese, /a cada cinco minutos/, /armazenamento de autenticação existente do OpenCode/, /nunca é armazenada nem registrada/, /janelas móvel de 5 horas, semanal e mensal/, /provedor selecionado da sessão é `opencode-go`/, /métricas do sistema continuam visíveis para todos os provedores/, /não são documentados como uma API estável/],
+  for (const [language, text, codex, openAi, codexEndpoint, go, goProvider, goApiKey, unstableApi, exclusivity] of [
+    ["Spanish", spanish, /Uso de Codex: cuotas de sesión y semanales/, /proveedor seleccionado es `openai`/, /chatgpt\.com\/backend-api\/wham\/usage/, /ventanas móvil de 5 horas, semanal y mensual/, /proveedor seleccionado es `opencode-go`/, /clave API de `auth\["opencode-go"\]`/, /no están documentadas como API estable/, /mutuamente excluyentes/],
+    ["English", english, /Codex usage: session\/weekly quotas/, /selected provider is `openai`/, /chatgpt\.com\/backend-api\/wham\/usage/, /rolling 5-hour, weekly, and monthly windows/, /selected provider `opencode-go`/, /reads that provider's API key/, /not a stable documented API/, /mutually exclusive/],
+    ["Portuguese", portuguese, /Uso do Codex: cotas de sessão e semanais/, /provedor selecionado é `openai`/, /chatgpt\.com\/backend-api\/wham\/usage/, /janelas móvel de 5 horas, semanal e mensal/, /provedor selecionado `opencode-go`/, /chave de API desse provedor/, /não são documentados como uma API estável/, /mutuamente exclusivos/],
   ] as const) {
-    assert.match(text, /OpenCode Go/, `${language} OpenCode Go feature is missing`)
-    assert.match(text, refresh, `${language} refresh cadence is missing`)
-    assert.match(text, authStore, `${language} auth-store note is missing`)
-    assert.match(text, security, `${language} API-key safety note is missing`)
-    assert.match(text, windows, `${language} usage windows are missing`)
-    assert.match(text, providerOnly, `${language} provider visibility limit is missing`)
-    assert.match(text, metricsVisible, `${language} system-metrics visibility is missing`)
-    assert.match(text, unstableApi, `${language} observed API stability caveat is missing`)
+    assert.match(text, codex, `${language} Codex features are missing`)
+    assert.match(text, openAi, `${language} Codex provider gate is missing`)
+    assert.match(text, codexEndpoint, `${language} Codex endpoint is missing`)
+    assert.match(text, go, `${language} OpenCode Go windows are missing`)
+    assert.match(text, goProvider, `${language} OpenCode Go provider gate is missing`)
+    assert.match(text, goApiKey, `${language} Go API-key source is missing`)
+    assert.match(text, unstableApi, `${language} observed Go API caveat is missing`)
+    assert.match(text, exclusivity, `${language} mutually exclusive panel behavior is missing`)
+    assert.match(text, /every five minutes|cada cinco minutos|a cada cinco minutos/i, `${language} refresh cadence is missing`)
+    assert.match(text, /credentials are never stored|Ninguna credencial se almacena|Nenhuma credencial é armazenada/i, `${language} credential-safety note is missing`)
+    assert.match(text, /system metrics remain visible|métricas del sistema siguen visibles|métricas do sistema continuam visíveis/i, `${language} system-metrics visibility is missing`)
   }
 })
