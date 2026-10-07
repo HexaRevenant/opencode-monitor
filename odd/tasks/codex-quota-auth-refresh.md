@@ -27,7 +27,7 @@ The plugin's `defaultOpenCodeAuthPath` used `%APPDATA%\opencode\auth.json` on Wi
 
 ## Tasks
 - [x] ODD-1: Align the shared OpenCode auth path helper with the installed OpenCode release and add platform regression tests; focused and integration tests pass.
-- [ ] ODD-2: Complete parent verification, record limitations, and create the required work-unit commit.
+- [x] ODD-2: Complete parent verification, record limitations, and create the required work-unit commit (`056ae6d`).
 
 ## Progress and evidence
 - 2026-10-07: The authorized quota request returned HTTP 401. Corrected the investigation by checking the exact installed OpenCode 1.18.35 source: `Global.Path.data` uses `xdg-basedir` on Windows too (`XDG_DATA_HOME` or `~/.local/share`); it does not switch to `%APPDATA%`. The plugin's Windows-specific `%APPDATA%` branch is therefore the concrete cross-platform path mismatch. Linux works because the plugin's non-Windows branch already follows XDG.
@@ -38,4 +38,5 @@ The plugin's `defaultOpenCodeAuthPath` used `%APPDATA%\opencode\auth.json` on Wi
 - 2026-10-07: `npm test` returned 76 passed, 1 failed; the only failure is README verification fence parity (`test/readme-parity.test.ts`: English verification section code fence not found), unrelated to changed files. Existing assertion for the old `%APPDATA%` expectation was updated.
 - 2026-10-07: `npm run typecheck` and `npm run build` both blocked by missing `koffi` module/types in the environment (`src/native-metrics.ts`, `src/windows-network.ts`).
 - 2026-10-07: Independent read-only verifier found no code or test gaps. `git diff --check` passed. RDD is disabled globally; no native review was started.
-- Next: Finish parent review, commit the work unit, and preserve the environment limitations in the final report.
+- 2026-10-07: Created work-unit commit `056ae6d` (`fix(auth): match OpenCode XDG credential path`) on `fix/codex-quota-auth-refresh`.
+- Next: User can update/reinstall the plugin on Windows; no push or PR was performed.
