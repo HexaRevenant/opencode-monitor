@@ -30,7 +30,7 @@ describe("OpenCode Go usage", () => {
   it("uses the existing platform OpenCode auth-store path", () => {
     assert.equal(defaultOpenCodeAuthPath({}, "/home/test", "linux"), "/home/test/.local/share/opencode/auth.json")
     assert.equal(defaultOpenCodeAuthPath({ XDG_DATA_HOME: "/data" }, "/home/test", "linux"), "/data/opencode/auth.json")
-    assert.equal(defaultOpenCodeAuthPath({}, "C:\\Users\\test", "win32"), "C:\\Users\\test\\AppData\\Roaming\\opencode\\auth.json")
+    assert.equal(defaultOpenCodeAuthPath({}, "C:\\Users\\test", "win32"), "C:\\Users\\test\\.local\\share\\opencode\\auth.json")
   })
 
   it("maps consumption to clamped remaining percentages and preserves status/reset timestamps", () => {

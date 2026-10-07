@@ -8,9 +8,9 @@ export function defaultOpenCodeAuthPath(
   home = homedir(),
   platform: OpenCodePlatform = process.platform as OpenCodePlatform,
 ): string {
-  if (platform === "win32") {
-    return win32.join(env.APPDATA ?? win32.join(home, "AppData", "Roaming"), "opencode", "auth.json")
-  }
-  if (platform === "darwin") return posix.join(home, "Library", "Application Support", "opencode", "auth.json")
-  return posix.join(env.XDG_DATA_HOME ?? posix.join(home, ".local", "share"), "opencode", "auth.json")
+  const dataHome = env.XDG_DATA_HOME || (platform === "win32"
+    ? win32.join(home, ".local", "share")
+    : posix.join(home, ".local", "share"))
+  const path = platform === "win32" ? win32 : posix
+  return path.join(dataHome, "opencode", "auth.json")
 }
